@@ -9,7 +9,45 @@ the work with citations and refuses anything outside its knowledge base.
 
 ## Status
 
-Design approved, pre-implementation. See `docs/` for the full specification.
+Built and verified. The full scroll site, terminal command palette, boot
+sequence, and grounded RAG chatbot are implemented against the specs in `docs/`.
+114 unit tests pass; production build is clean.
+
+## Run locally
+
+```bash
+npm install
+npm run dev        # http://localhost:5173
+npm test           # unit tests (Vitest)
+npm run build      # typecheck + production build
+```
+
+The chatbot works offline in dev via a client-side retrieval fallback (real
+answers with citations and refusals, no LLM call). With a serverless deploy and
+an API key it streams full LLM answers.
+
+## E2E smoke (optional)
+
+```bash
+npx playwright install
+npm run test:e2e
+```
+
+## Deploy (Vercel)
+
+Push to a Vercel project. `api/ask.ts` is auto-detected as a serverless
+function; `vercel.json` sets its runtime. Environment variables:
+
+- `ANTHROPIC_API_KEY` (server-side only). Absent, the endpoint degrades to
+  retrieval-only cited answers, so the site still works with zero cost.
+- `ASK_MONTHLY_CALL_CAP` (optional, default 5000) caps LLM calls per month.
+
+## Verified behavior
+
+Boot, theme switching with persistence, count-up metrics, the scroll-built RAG
+pipeline animation, project scenes with code artifacts, the command palette
+(backtick or the hero control), grounded chat answers with citation chips, and
+the off-topic refusal state.
 
 ## Docs
 
