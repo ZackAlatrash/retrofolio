@@ -34,9 +34,10 @@ near-invisible.
 
 A theme is a small token set. `ThemeEngine.setTheme(name)` writes these as CSS
 custom properties on `:root` and persists `name` to `localStorage`
-(`zk.theme`). On load, read the stored value, else default to `tokyo-night`,
-else honor `prefers-color-scheme` for choosing between a dark default and
-`paper`.
+(`zk.theme`). The confirmed default mood is dark, terminal-authentic: default to
+`tokyo-night`. On load, read the stored value first; if none, use `tokyo-night`
+(a returning visitor who chose `paper` keeps it). The theme switcher lets any
+visitor move to `paper` (light) or another palette at any time.
 
 Token contract (every theme must define all of these):
 
@@ -95,8 +96,13 @@ under `prefers-reduced-motion`.
 
 ## 6. Motion
 
-- **Boot sequence:** a short typewriter reveal of the banner + `whoami`. Skips
-  instantly on reduced-motion or on a second visit (respect returning users).
+See MOTION-VISUALS.md for the full scroll-narrative motion system (GSAP
+ScrollTrigger, the scroll-built pipeline, count-ups, reduced-motion). Terminal-
+local motion below.
+
+- **Boot sequence:** a short, skippable cinematic boot (`./launch-portfolio`) that
+  renders into the scroll site. Skips instantly on reduced-motion or on a second
+  visit (respect returning users). Full spec in MOTION-VISUALS.md §2.
 - **Cursor:** blinking block cursor at the prompt; steady under reduced-motion.
 - **Command output:** appears with a 120ms fade/slide; instant under
   reduced-motion.

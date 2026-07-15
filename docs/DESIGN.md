@@ -12,14 +12,17 @@ here, it should be added here first so the site stays consistent.
 
 ## 1. The idea in one paragraph
 
-A CLI-themed personal portfolio. The site boots like a terminal and can be
-driven two ways at once: power users type commands (`ls projects`,
-`cat omnipotence`, `ask "..."`), and everyone else clicks and scrolls the exact
-same content. Terminal color themes are switchable and remembered. Projects are
-presented as terminal-native deep-dives rather than a card grid. The signature
-piece is a real, grounded RAG chatbot that answers questions about Zack's work
-with citations and refuses anything outside its knowledge base — a working demo
-of the anti-hallucination engineering that defines his portfolio.
+A CLI-themed personal portfolio built recruiter-first. On load it plays a short,
+skippable terminal boot, then renders into a modern, animated, image-rich scroll
+site that needs zero typing: count-up metrics, device mockups, and a signature
+scroll-built architecture diagram. The terminal is a signature layer on top, not
+the price of entry: a real command palette (`Cmd/Ctrl-K` or backtick) lets power
+users drive the same content, and switchable terminal color themes are
+remembered. The signature interactive piece is a real, grounded RAG chatbot that
+answers questions about Zack's work with citations and refuses anything outside
+its knowledge base, a working demo of the anti-hallucination engineering that
+defines his portfolio. Chosen structure is model D (see MOTION-VISUALS.md);
+default mood is dark, terminal-authentic (tokyo-night).
 
 ## 2. Why this concept (positioning)
 
@@ -43,11 +46,14 @@ frontend), and a generic "Hero → Projects grid → Contact" template (invisibl
 
 ## 3. Non-negotiable principles
 
+- **Recruiter-first, progressive disclosure.** The default view is a modern
+  animated scroll site that requires no typing. The terminal is an optional
+  power-user layer (command palette + boot + chatbot). See MOTION-VISUALS.md §1.
 - **Dual input, single content.** Anything reachable by a typed command is
-  reachable by a click, and vice versa. No content is locked behind the CLI.
-- **No one locked out.** A first-time, non-technical visitor must understand
-  within 3 seconds that they can just click. A visible hint + clickable command
-  chips guarantee this.
+  reachable by scroll/click, and vice versa. No content is locked behind the CLI.
+- **No one locked out.** A first-time, non-technical visitor sees a normal,
+  polished website, never a blank prompt. The command palette is discoverable but
+  never required.
 - **Grounded, honest, defensible.** Every claim on the site traces to the master
   resume. No fabricated metrics, testimonials, or logos. The chatbot answers
   only from a curated knowledge base and refuses otherwise. This mirrors the
@@ -87,7 +93,7 @@ Browser (React SPA, static)                    Vercel Edge/Serverless
 | Framework    | React 18 + TypeScript (strict)           | Consistent with Kukis; Zack's strongest web stack |
 | Build        | Vite 6                                    | Same as Kukis; fast, simple |
 | Styling      | Tailwind CSS v4 (`@theme` tokens)         | Theme palettes map cleanly to CSS custom properties |
-| Animation    | CSS + minimal Framer Motion               | Typewriter, cursor, scroll reveals; reduced-motion aware |
+| Animation    | GSAP + ScrollTrigger; Lenis smooth scroll; Framer Motion/CSS for reveals | Scroll-built diagrams, pinned sequences, count-ups; reduced-motion aware (MOTION-VISUALS.md) |
 | Serverless   | Vercel Functions (`/api/ask`)             | Native to Vercel deploy; holds the LLM key server-side |
 | LLM          | Cheap hosted model (e.g. small GPT-class or Claude Haiku) | Low cost per answer; swap behind an adapter |
 | Retrieval    | In-memory cosine over precomputed embeddings (build-time) | Mirrors Lex-AI's from-scratch approach; no vector DB service needed |
@@ -101,8 +107,17 @@ simplicity, since the site is content-static and needs only one API route.
 
 ## 6. Core components
 
-Each has one purpose, a clear interface, and is independently testable.
+Each has one purpose, a clear interface, and is independently testable. The
+scroll site (sections + motion, see MOTION-VISUALS.md) is the default surface;
+the components below power both it and the command layer.
 
+- **BootSequence** — the skippable cinematic terminal boot that transitions into
+  the scroll site. Auto-skips on return visits and under reduced-motion.
+- **CommandPalette** — the `Cmd/Ctrl-K` / backtick overlay hosting the terminal.
+  Runs commands that scroll-animate to sections or open the chatbot. Depends on:
+  CommandBus.
+- **ScrollStage** — the section/animation controller (GSAP ScrollTrigger + reveal
+  logic, pinned pipeline). Depends on: content model, reduced-motion state.
 - **CommandBus** — parses input, resolves a command from the registry, returns a
   structured `CommandResult` (never raw HTML). Depends on: registry only.
 - **CommandRegistry** — declarative map of command name → handler + help text +
@@ -137,22 +152,21 @@ Each has one purpose, a clear interface, and is independently testable.
 
 The knowledge base, thresholds, prompt, and safety rules live in CHATBOT.md.
 
-## 8. Site structure (content surfaces)
+## 8. Site structure
 
-All are reachable by command and by click:
+The default surface is a single scroll narrative (hero, proof-strip metrics,
+scroll-built RAG pipeline, selected work, the rest, skills, chatbot, contact) as
+specified in MOTION-VISUALS.md §3. Every section is also addressable by a command
+in the palette, which scroll-animates to it:
 
-- `whoami` / **Home** — identity, one-line positioning, key metrics readout.
-- `ls projects` / **Projects index** — the 12 projects; top 6 flagged as deep.
-- `cat <project>` / **Project view** — deep case study or concise card.
-- `ask "..."` / **Chatbot** — grounded Q&A, always accessible (also a persistent
-  affordance, not only a command).
-- `skills` / **Skills** — grouped inventory (AI/ML, architecture, cloud, etc.).
-- `resume` / **Resume** — view + download the tailored PDF.
-- `contact` / **Contact** — email, GitHub, LinkedIn; no form needed (mailto), or
-  a static-form provider like Kukis used.
-- `help` — discoverable command list. `theme`, `clear`, history, tab-complete.
+- `whoami` -> Hero / identity, positioning, metrics.
+- `ls projects` / `cat <project>` -> Selected work + project scenes (deep or card).
+- `ask "..."` -> Chatbot (also a persistent docked affordance, not only a command).
+- `skills` -> Skills section. `resume` -> resume view + PDF download.
+- `contact` -> Contact section. `theme`, `help`, `clear`, history, tab-complete.
 
-Full command spec: COMMANDS.md. Full copy + project mapping: CONTENT.md.
+Full command spec: COMMANDS.md. Copy + project mapping: CONTENT.md. Motion,
+sections, and how backend projects are made visual: MOTION-VISUALS.md.
 
 ## 9. Project view: `deep` vs `card`
 

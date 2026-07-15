@@ -3,9 +3,13 @@
 Last updated: 2026-07-15
 Refines: DESIGN.md §6 (CommandBus, CommandRegistry), §8
 
-Every command maps to a content surface that is *also* clickable. Commands are
-declarative entries in the registry: `{ name, aliases, args, help, group,
-handler }`. Adding or renaming a command touches only the registry.
+The default site is a modern scroll narrative (MOTION-VISUALS.md); commands are
+the optional power-user layer. They live in a command palette opened with
+`Cmd/Ctrl-K` or the backtick key, and each command scroll-animates to its
+section or opens the chatbot. Every command maps to a content surface that is
+*also* reachable by scroll/click. Commands are declarative entries in the
+registry: `{ name, aliases, args, help, group, handler }`. Adding or renaming a
+command touches only the registry.
 
 Design rules:
 - Case-insensitive. Leading/trailing whitespace trimmed.
@@ -75,9 +79,15 @@ production AWS experience?", "Show me his testing discipline.").
 Easter eggs must never interfere with discoverability or accessibility, and are
 cut if they add meaningful build or maintenance cost.
 
-## First-run affordance (critical, not a command)
+## Opening the command layer (not a command)
 
-On first load the terminal shows a one-line, dismissible hint such as:
-`» New here? Type help, or just click the chips below.` plus visible clickable
-command chips. This guarantees non-technical visitors are never faced with a
-blank prompt they don't know how to use.
+- `Cmd/Ctrl-K` or the backtick key opens the command palette / terminal overlay.
+- A small, discoverable `⌘K` affordance sits in the hero and docked chrome.
+- The palette is never required: the whole site is browsable by scroll and click.
+
+## First-run affordance (critical)
+
+Non-technical visitors land on the scroll site, never a blank prompt. The `⌘K`
+hint and the docked `ask` bar are visible but optional. Inside the palette, an
+empty state lists grouped commands and suggested `ask` questions so a curious
+recruiter who opens it is never stuck.

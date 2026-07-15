@@ -1,9 +1,11 @@
 # Zack Alatrash — Portfolio
 
-A CLI-themed personal portfolio. The site boots like a terminal and is fully
-navigable by both typing commands and clicking, with switchable terminal color
-themes and a grounded RAG chatbot that answers questions about the work with
-citations and refuses anything outside its knowledge base.
+A CLI-themed personal portfolio, built recruiter-first. It boots like a terminal,
+then renders into a modern animated scroll site (no typing required) with
+count-up metrics, device mockups, and a signature scroll-built architecture
+diagram. The terminal lives on as an optional `⌘K` command palette, with
+switchable color themes and a grounded RAG chatbot that answers questions about
+the work with citations and refuses anything outside its knowledge base.
 
 ## Status
 
@@ -16,6 +18,9 @@ Design approved, pre-implementation. See `docs/` for the full specification.
 - [`docs/DESIGN-SYSTEM.md`](docs/DESIGN-SYSTEM.md) — terminal visual system,
   theme model, and the launch theme set.
 - [`docs/COMMANDS.md`](docs/COMMANDS.md) — the CLI command reference.
+- [`docs/MOTION-VISUALS.md`](docs/MOTION-VISUALS.md) — the recruiter-first scroll
+  narrative, motion system (GSAP), the scroll-built RAG pipeline, and how backend
+  projects are made visual. Read alongside DESIGN.md.
 - [`docs/CHATBOT.md`](docs/CHATBOT.md) — the grounded RAG chatbot spec
   (knowledge base, retrieval, evidence gate, serverless endpoint, safety).
 - [`docs/CONTENT.md`](docs/CONTENT.md) — content model and copy, mapping the
@@ -29,9 +34,10 @@ engineering that defines the portfolio.
 
 ## Stack (planned)
 
-React 18 + TypeScript + Vite + Tailwind CSS v4, deployed on Vercel with a single
-rate-limited serverless function for the chatbot. Vitest + Playwright for tests,
-GitHub Actions for CI.
+React 18 + TypeScript + Vite + Tailwind CSS v4, with GSAP ScrollTrigger + Lenis
+for the scroll narrative, deployed on Vercel with a single rate-limited
+serverless function for the chatbot. Vitest + Playwright for tests, GitHub
+Actions for CI.
 
 ## Principles
 
