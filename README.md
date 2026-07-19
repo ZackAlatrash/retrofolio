@@ -59,6 +59,11 @@ the off-topic refusal state.
 - [`docs/MOTION-VISUALS.md`](docs/MOTION-VISUALS.md) — the recruiter-first scroll
   narrative, motion system (GSAP), the scroll-built RAG pipeline, and how backend
   projects are made visual. Read alongside DESIGN.md.
+- [`docs/SHOWCASE-CONSOLE.md`](docs/SHOWCASE-CONSOLE.md) — the retro console and
+  cartridge project showcase that replaces the long project scroll, including
+  the instruction-manual case studies and the 3D cartridge.
+- [`docs/ASSETS.md`](docs/ASSETS.md) — every asset to generate, with prompt
+  templates, technical specs, and priority tiers.
 - [`docs/CHATBOT.md`](docs/CHATBOT.md) — the grounded RAG chatbot spec
   (knowledge base, retrieval, evidence gate, serverless endpoint, safety).
 - [`docs/CONTENT.md`](docs/CONTENT.md) — content model and copy, mapping the

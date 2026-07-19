@@ -93,7 +93,9 @@ Browser (React SPA, static)                    Vercel Edge/Serverless
 | Framework    | React 18 + TypeScript (strict)           | Consistent with Kukis; Zack's strongest web stack |
 | Build        | Vite 6                                    | Same as Kukis; fast, simple |
 | Styling      | Tailwind CSS v4 (`@theme` tokens)         | Theme palettes map cleanly to CSS custom properties |
-| Animation    | GSAP + ScrollTrigger; Lenis smooth scroll; Framer Motion/CSS for reveals | Scroll-built diagrams, pinned sequences, count-ups; reduced-motion aware (MOTION-VISUALS.md) |
+| Animation    | GSAP + ScrollTrigger; native smooth scroll; Framer Motion/CSS for reveals | Scroll-built diagrams, pinned sequences, count-ups; reduced-motion aware (MOTION-VISUALS.md) |
+| 3D           | three (lazy chunk, one hero cartridge) | Wow moment at minimal weight; static fallback (ASSETS.md §4) |
+| i18n         | Lightweight dictionary in the content model | English default, Dutch toggle; no copy hardcoded in components |
 | Serverless   | Vercel Functions (`/api/ask`)             | Native to Vercel deploy; holds the LLM key server-side |
 | LLM          | Cheap hosted model (e.g. small GPT-class or Claude Haiku) | Low cost per answer; swap behind an adapter |
 | Retrieval    | In-memory cosine over precomputed embeddings (build-time) | Mirrors Lex-AI's from-scratch approach; no vector DB service needed |
@@ -218,12 +220,40 @@ links. No diagram, no limitations section.
   the high-contrast default-friendly option. Theme choice never encodes meaning
   by color alone.
 
-## 13. Out of scope (YAGNI)
+## 13. Scope additions (decided 2026-07-16)
 
-- No CMS, no blog engine at launch (a `blog` command can come later).
-- No auth, no analytics dashboards, no comment system.
-- No multi-language site (content is English; languages are listed as a fact).
-- No 3D, no WebGL, no audio.
+- **Console cartridge showcase** replaces the long-scroll project sections. Full
+  spec: SHOWCASE-CONSOLE.md. Theme applies to the showcase and boot only; the
+  hero, pipeline, chatbot, skills and contact stay clean terminal.
+- **One 3D hero moment**: a single Three.js cartridge (box mesh + label texture),
+  lazy-loaded with a static fallback. No modelled scenes or rooms.
+- **Dev log / patch notes**: an on-theme changelog of what is currently shipping.
+- **Opt-in retro sound**: muted by default, visible toggle, persisted.
+- **Dutch language toggle**: English default, Dutch second locale for the NL
+  market. All visitor copy must live in the content model, never hardcoded in
+  components, so both locales stay in sync.
+- **Generated art direction**: see ASSETS.md for the full inventory, prompts and
+  technical specs. Generated images are illustration and identity only, never a
+  substitute for a real screenshot or an unearned metric.
+
+### Still out of scope (YAGNI)
+
+- No CMS, no auth, no comment system, no analytics dashboards (privacy-friendly
+  page analytics only).
+- No modelled 3D environments, no autoplaying audio, no video backgrounds.
+
+## 14. Credibility and self-evidencing
+
+The site is itself an artifact a hiring manager will judge, so it should prove
+its own claims:
+
+- Real screen recordings and screenshots of the shipped apps (proof beats art).
+- Deep-linkable projects so a single project can be linked from an application.
+- Availability banner, real repo/live links only, AWS credential link.
+- A footer or `stats` command reporting the site's own test count, Lighthouse
+  score, and CI status. For a candidate whose pitch is architecture and testing
+  discipline, this is the cheapest credibility win available.
+- Named references remain an open gap in the master resume.
 
 ## 14. Open decisions to confirm before build
 
