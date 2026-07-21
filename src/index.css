@@ -41,6 +41,20 @@ body {
   font-family: var(--font-mono);
 }
 
+@keyframes pressBlink {
+  0%,
+  55% {
+    opacity: 1;
+  }
+  56%,
+  100% {
+    opacity: 0.15;
+  }
+}
+.press-blink {
+  animation: pressBlink 1.1s steps(1) infinite;
+}
+
 @media (prefers-reduced-motion: reduce) {
   *,
   *::before,

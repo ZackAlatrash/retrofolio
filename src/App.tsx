@@ -1,23 +1,32 @@
-import { Boot } from "./terminal/Boot";
-import { TerminalLayer } from "./terminal/TerminalLayer";
-import { ScrollNarrative } from "./sections/ScrollNarrative";
-import { ChatSection } from "./sections/ChatSection";
-import { ThemeSwitcher } from "./components/ThemeSwitcher";
+import { TitleScreen } from "./screens/TitleScreen";
 
 /**
- * Model D composition: a cinematic boot reveals the recruiter-first scroll
- * narrative. The chatbot renders in the narrative's chat slot; the terminal
- * command palette and a visible theme switcher overlay everything.
- *
- * Native CSS smooth scroll (index.css) drives command and citation navigation
- * reliably; it cooperates with GSAP ScrollTrigger and honors reduced motion.
+ * Retro-game portfolio (redesign in progress, built screen by screen).
+ * Screen 1 (Title) is live. The remaining screens land here in order; for now
+ * a stub gives the title's START / PRESS START somewhere to scroll to.
  */
 export function App() {
   return (
-    <Boot>
-      <ThemeSwitcher />
-      <ScrollNarrative chatSlot={<ChatSection />} />
-      <TerminalLayer />
-    </Boot>
+    <>
+      <TitleScreen />
+      <section
+        id="library"
+        style={{
+          minHeight: "100vh",
+          display: "flex",
+          alignItems: "center",
+          justifyContent: "center",
+          padding: "0 24px",
+        }}
+      >
+        <p
+          className="font-mono"
+          style={{ color: "var(--term-dim)", fontSize: 13, textAlign: "center" }}
+        >
+          <span style={{ color: "var(--term-green)" }}>{"// "}</span>
+          GAME LIBRARY — the cartridge showcase is built next
+        </p>
+      </section>
+    </>
   );
 }
