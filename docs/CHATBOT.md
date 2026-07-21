@@ -1,12 +1,20 @@
 # Portfolio — Grounded Chatbot (RAG) Spec
 
-Last updated: 2026-07-15
-Refines: DESIGN.md §4, §7 (the `ask` path)
+Last updated: 2026-07-16
+Refines: DESIGN.md §8; PAGE-LAYOUT.md §6
 
-The chatbot is the signature piece. It must behave like the RAG systems on the
-resume: retrieve, gate on evidence, answer only from grounded context, cite
-sources, and refuse cleanly when the question is outside the knowledge base. The
-refusal is not a failure mode to hide; it is the demonstration.
+PLACEMENT (updated 2026-07-16): the chatbot is a floating, support-style help
+widget (the `?` button in the HUD), like a product support chat, NOT a page
+section. It opens a small chat panel over the current screen. Everything about
+the retrieval, evidence gate, citations, and refusal below is unchanged; only
+its placement changed. `ChatSection.tsx` (a full-width section block) is retired
+in favour of a floating `ChatWidget` launched from the HUD. Citation chips still
+deep-link to `#project-<id>`.
+
+It must still behave like the RAG systems on the resume: retrieve, gate on
+evidence, answer only from grounded context, cite sources, and refuse cleanly
+when the question is outside the knowledge base. The refusal is not a failure
+mode to hide; it is the demonstration.
 
 ---
 

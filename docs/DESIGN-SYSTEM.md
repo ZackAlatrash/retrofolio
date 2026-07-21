@@ -1,12 +1,35 @@
 # Portfolio — Design System
 
-Last updated: 2026-07-15
-Refines: DESIGN.md §3, §6 (ThemeEngine), §12
+Last updated: 2026-07-16
+Refines: DESIGN.md §3, §6 (ThemeEngine); PAGE-LAYOUT.md; SHOWCASE-CONSOLE.md
 
-The visual language is "a real terminal, done tastefully." Monospace, generous
-line-height, restrained motion, and switchable authentic color themes. Nothing
-neon, nothing that flashes. The terminal is the product; the chrome around it is
-near-invisible.
+Two layers, applied deliberately:
+
+1. **Terminal base** (below) — monospace, generous line-height, the switchable
+   color themes, restrained motion. This is the foundation for all body copy,
+   manuals, skills, and readable content.
+2. **Retro-game layer** (§11) — the console, CRT, cartridges, pixel display
+   font, and arcade flourishes that wrap the terminal base into a game. Applied
+   to titles, the HUD, the showcase, and screen chrome, NOT to body text.
+
+The contrast is the design: an arcade wrapper around senior-engineer substance.
+
+## 11. Retro-game visual layer
+
+- **Pixel display font** (e.g. "Press Start 2P") for game titles, menu labels,
+  stat labels, and `PRESS START` prompts ONLY. Never body copy, never manuals,
+  never long text — it is punishing to read at length.
+- **CRT treatment**: optional scanline + vignette overlay on the title screen
+  and the cartridge CRT. Must keep text at WCAG AA. Off by default beyond the
+  showcase; tied to the existing CRT toggle.
+- **Console + cartridge styling**: cartridge shells, ridged tops, printed
+  labels, console slot and dock — see SHOWCASE-CONSOLE.md.
+- **Palette**: the tokyo-night terminal palette carries through; game accents
+  (arcade yellow `#f7e96b`, CRT phosphor green) are used sparingly for titles,
+  prompts, and highlights, never for body text.
+- **Reduced motion**: no flicker, tilt, insert, or shimmer; static equivalents.
+- Everything in this layer must degrade to the readable terminal base if art,
+  fonts, WebGL, or motion are unavailable.
 
 ---
 

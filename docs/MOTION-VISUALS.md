@@ -1,8 +1,16 @@
 # Portfolio — Motion & Visuals Spec
 
-Last updated: 2026-07-15
-Refines: DESIGN.md §1, §3, §8, §9; DESIGN-SYSTEM.md §6
-Resolves: "make it appealing for recruiters who don't know CLI."
+Last updated: 2026-07-16
+Refines: DESIGN.md; DESIGN-SYSTEM.md §6
+
+SUPERSEDED STRUCTURE (2026-07-16): §2 (model D) and §3 (the scroll-narrative
+section order) are retired. The authoritative page structure is now
+PAGE-LAYOUT.md (six retro-game screens + level-select). The motion SYSTEM below
+(GSAP + ScrollTrigger, reveal-on-enter, count-ups, reduced-motion discipline,
+the scroll-built RAG pipeline in §5) still applies and carries into the game
+screens. Add game-specific motion: console power-on, cartridge insert, CRT
+flicker, title-screen idle (ASSETS.md §3). Read §4–§8 for the reusable system;
+ignore §2–§3's specific section list.
 
 The default experience is a modern, animated, image-rich scroll site (recruiter
 first). The terminal is a signature layer on top, not the price of entry. This

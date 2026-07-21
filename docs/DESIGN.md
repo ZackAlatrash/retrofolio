@@ -12,17 +12,23 @@ here, it should be added here first so the site stays consistent.
 
 ## 1. The idea in one paragraph
 
-A CLI-themed personal portfolio built recruiter-first. On load it plays a short,
-skippable terminal boot, then renders into a modern, animated, image-rich scroll
-site that needs zero typing: count-up metrics, device mockups, and a signature
-scroll-built architecture diagram. The terminal is a signature layer on top, not
-the price of entry: a real command palette (`Cmd/Ctrl-K` or backtick) lets power
-users drive the same content, and switchable terminal color themes are
-remembered. The signature interactive piece is a real, grounded RAG chatbot that
-answers questions about Zack's work with citations and refuses anything outside
-its knowledge base, a working demo of the anti-hallucination engineering that
-defines his portfolio. Chosen structure is model D (see MOTION-VISUALS.md);
-default mood is dark, terminal-authentic (tokyo-night).
+A personal portfolio built as one cohesive retro video game (redesign decided
+2026-07-16). The whole site is themed, top to bottom: it powers on like a
+console, presents a title screen, and each section is a "screen" (Title, About
+as a character card, Projects as a cartridge library, Skills as a skill tree,
+Patch Notes as a dev log, Contact as credits). Navigation is scrollable
+full-height screens plus a persistent level-select menu. The framing is playful;
+the content stays serious, legible, and honest. The centrepiece is the project
+showcase: 12 projects as game cartridges you load on a CRT and open as
+instruction-manual case studies (SHOWCASE-CONSOLE.md). The grounded RAG chatbot
+is now a floating support-style help button, not a section (CHATBOT.md §UI). The
+authoritative layout is PAGE-LAYOUT.md; default palette is tokyo-night with the
+existing theme switcher.
+
+Heritage note: an earlier build was a clean-terminal recruiter-first scroll site
+(model D). Its foundations (theme engine, content model, the RAG backend, the
+pipeline animation, StatCounter) carry forward; its section layout is retired
+(PAGE-LAYOUT.md §11).
 
 ## 2. Why this concept (positioning)
 
@@ -156,19 +162,20 @@ The knowledge base, thresholds, prompt, and safety rules live in CHATBOT.md.
 
 ## 8. Site structure
 
-The default surface is a single scroll narrative (hero, proof-strip metrics,
-scroll-built RAG pipeline, selected work, the rest, skills, chatbot, contact) as
-specified in MOTION-VISUALS.md §3. Every section is also addressable by a command
-in the palette, which scroll-animates to it:
+The site is six full-height game "screens" navigated by scroll and a persistent
+level-select menu (full spec: PAGE-LAYOUT.md):
 
-- `whoami` -> Hero / identity, positioning, metrics.
-- `ls projects` / `cat <project>` -> Selected work + project scenes (deep or card).
-- `ask "..."` -> Chatbot (also a persistent docked affordance, not only a command).
-- `skills` -> Skills section. `resume` -> resume view + PDF download.
-- `contact` -> Contact section. `theme`, `help`, `clear`, history, tab-complete.
+1. Title (Hero) · NL
+2. About (character card) · NL
+3. Projects (cartridge showcase) — the main event (SHOWCASE-CONSOLE.md)
+4. Skills (skill tree)
+5. Patch Notes (dev log)
+6. Contact (credits) · NL
 
-Full command spec: COMMANDS.md. Copy + project mapping: CONTENT.md. Motion,
-sections, and how backend projects are made visual: MOTION-VISUALS.md.
+The HUD is always on: level select, theme toggle, sound toggle, EN/NL language
+toggle, and the `?` support chatbot. Deep links per screen and per project
+(PAGE-LAYOUT.md §4). Copy + project mapping: CONTENT.md. Assets and generation
+briefs: ASSETS.md.
 
 ## 9. Project view: `deep` vs `card`
 

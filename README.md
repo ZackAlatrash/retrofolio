@@ -49,10 +49,17 @@ pipeline animation, project scenes with code artifacts, the command palette
 (backtick or the hero control), grounded chat answers with citation chips, and
 the off-topic refusal state.
 
+> Redesign in progress (2026-07-16): the site is being rebuilt as one cohesive
+> retro video game. See `docs/PAGE-LAYOUT.md` for the new structure. The docs
+> below are current; the previously built clean-terminal sections are retired
+> (PAGE-LAYOUT.md §11).
+
 ## Docs
 
 - [`docs/DESIGN.md`](docs/DESIGN.md) — master design spec (architecture, stack,
   components, data flow, testing). Start here.
+- [`docs/PAGE-LAYOUT.md`](docs/PAGE-LAYOUT.md) — the retro-game main-page layout:
+  the six screens, navigation, HUD, deep links, and build order. Read second.
 - [`docs/DESIGN-SYSTEM.md`](docs/DESIGN-SYSTEM.md) — terminal visual system,
   theme model, and the launch theme set.
 - [`docs/COMMANDS.md`](docs/COMMANDS.md) — the CLI command reference.
