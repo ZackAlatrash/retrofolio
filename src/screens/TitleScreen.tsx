@@ -1,4 +1,4 @@
-import type { CSSProperties } from "react";
+import { useEffect, useState, type CSSProperties } from "react";
 import { useReducedMotion } from "../motion/useReducedMotion";
 import { useHeroScrub, posterUrl } from "../hero/useHeroScrub";
 import { DecodeText } from "../hero/DecodeText";
@@ -31,6 +31,14 @@ export function TitleScreen() {
 
   const { containerRef, canvasRef, progress } = useHeroScrub(scrub);
   const p = reduced ? 1 : progress;
+
+  // The opening frame is just a code vortex, so cue the scroll after a beat.
+  const [armed, setArmed] = useState(false);
+  useEffect(() => {
+    if (!scrub) return;
+    const id = window.setTimeout(() => setArmed(true), 900);
+    return () => window.clearTimeout(id);
+  }, [scrub]);
 
   const overlay = (
     <div
@@ -173,6 +181,16 @@ export function TitleScreen() {
           style={{ position: "absolute", inset: 0, width: "100%", height: "100%" }}
         />
         {overlay}
+        {armed && (
+          <div
+            className="scroll-cue"
+            aria-hidden="true"
+            style={{ opacity: p < 0.04 ? 1 : 0 }}
+          >
+            <span className="cue-chev">▼</span>
+            <span className="cue-txt">SCROLL TO POWER ON</span>
+          </div>
+        )}
       </div>
     </div>
   );

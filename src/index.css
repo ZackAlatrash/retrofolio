@@ -55,6 +55,43 @@ body {
   animation: pressBlink 1.1s steps(1) infinite;
 }
 
+.scroll-cue {
+  position: absolute;
+  bottom: 7vh;
+  left: 0;
+  right: 0;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 10px;
+  pointer-events: none;
+  transition: opacity 0.5s ease;
+  z-index: 3;
+}
+.cue-chev {
+  color: var(--term-green);
+  font-size: 20px;
+  animation: cueBounce 1.2s ease-in-out infinite;
+}
+.cue-txt {
+  font-family: "Press Start 2P", ui-monospace, monospace;
+  font-size: 11px;
+  color: var(--term-green);
+  letter-spacing: 1px;
+  animation: pressBlink 1.1s steps(1) infinite;
+}
+@keyframes cueBounce {
+  0%,
+  100% {
+    transform: translateY(0);
+    opacity: 0.6;
+  }
+  50% {
+    transform: translateY(7px);
+    opacity: 1;
+  }
+}
+
 @media (prefers-reduced-motion: reduce) {
   *,
   *::before,
