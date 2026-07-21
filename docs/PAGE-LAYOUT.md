@@ -47,13 +47,30 @@ menu button on mobile.
 Order is fixed. Each is built and perfected one at a time; assets are supplied
 per screen as we go.
 
-### Screen 1 — POWER ON / TITLE SCREEN (Hero) · NL
-- Console power-on animation resolves into a real game title screen.
-- Your name as the game logo, a subtitle tagline, a blinking `PRESS START`, and
-  the menu echoed here (Start jumps to Projects).
-- Assets: 3D console or animated key art background, title logo treatment, CRT
-  overlay. The one screen allowed to be maximal.
-- The hero is the first impression: it must look expensive.
+### Screen 1 — TITLE SCREEN (Hero) · NL
+The first impression; it must look expensive. Pixel-art, and the console is
+**alive from the first frame** (no dead-black off state, and it never powers
+down since it runs the whole site).
+
+- **Mechanic:** a scroll-scrub video, pinned (Kukis-style frame scrub). A Veo
+  video (image-to-video, two Nano Banana pixel-art keyframes) plays as the user
+  scrolls: streams of generic pixel code rain in and coalesce into a calm
+  title-screen backdrop, and a row of blank cartridge silhouettes materializes
+  along the lower third, bridging directly into the Projects showcase below.
+- **Generic code only** (no project-specific imagery) so the hero never goes
+  stale as the work grows. Cartridge silhouettes are unlabeled; the real labeled
+  cartridges live in Screen 3.
+- **Text is HTML overlay, never baked into the video** (crisp, translatable,
+  accessible). Reveal choreography by scroll %: logo ~50%, tagline ~68%, menu
+  ~87%, `PRESS START` blink ~90%.
+- **Copy:** title `ZACK ALATRASH`; tagline `Grounded AI, shipped to production.`
+  (NL `Gefundeerde AI, in productie gebracht.`); menu START · ABOUT · SKILLS ·
+  CONTACT (NL START · OVER MIJ · VAARDIGHEDEN · CONTACT); `PRESS START` jumps to
+  Projects; footer `© 2026 · Haarlem, NL · Available summer 2026`.
+- **Assets (from Zack):** the Veo MP4 (pixel-art). I extract ~120 frames for
+  jank-free scrubbing, with a static poster fallback for reduced motion.
+- **Fallback:** under reduced motion or if the video is unavailable, show the
+  settled title-screen poster frame with the text, no scrub.
 
 ### Screen 2 — PLAYER 1 (About, character card) · NL
 - You as the playable character: pixel portrait, class ("systems engineer"),
