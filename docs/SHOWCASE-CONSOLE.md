@@ -7,8 +7,28 @@ Assets: ASSETS.md
 
 The project showcase is a retro game console. All 12 projects are cartridges on
 a shelf, visible in roughly one screen. Selecting one loads it on a CRT as a
-title screen with real metrics as stats; PRESS START opens the case study as a
-game instruction manual.
+title screen with real metrics as stats; PRESS START opens the case study.
+
+## Agreed design (2026-07-16, brainstormed with Zack)
+
+- **Layout = "game station":** a CRT/console on TOP shows a live title-screen
+  preview; the 12 cartridges sit in a flagship-first GRID below it. Everything
+  in one screen, no scroll. Cohesive with the hero (whose CRT ends on cartridge
+  silhouettes that become these carts).
+- **Interaction:** hovering a cartridge live-updates the CRT preview; clicking
+  plays an insert + boot into that project's detail screen.
+- **Cartridge:** a labelled cart (ridged top, printed label) carrying the
+  generated 16-bit label art (ASSETS.md §1.1) + project name; a status dot
+  (green=deployed/live, amber=beta, purple=personal, dim=academic).
+- **CRT preview content:** box art, project name (pixel), genre/category, one
+  headline stat, blinking PRESS START.
+- **Detail screen = a dedicated "game" screen** booted from the cartridge
+  (insert -> boot -> screen -> EJECT back; prev/next to flip projects). Its
+  content is MODULAR per project (each shows only the blocks that fit): title
+  card, stats panel, screenshot gallery OR architecture diagram, code snippet,
+  short demo video/GIF, briefing text (as game sections), links. Internal layout
+  (tabbed vs scroll vs dashboard) is DEFERRED - decide when we build the detail
+  content.
 
 ---
 
