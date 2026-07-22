@@ -3,6 +3,7 @@ import { GameNav } from "./GameNav";
 import { HelpWidget } from "./HelpWidget";
 import { CrtOverlay } from "./CrtOverlay";
 import { useGameRoute } from "./useGameRoute";
+import { GameStation } from "../showcase/GameStation";
 
 /**
  * The retro-game shell: the Title screen, the remaining screens (stubs for now,
@@ -15,7 +16,7 @@ export function GameShell() {
     <>
       <TitleScreen />
       <Stub id="about" n={2} title="ABOUT" note="the character card is built here" />
-      <Stub id="projects" n={3} title="GAME LIBRARY" note="the cartridge showcase is next" />
+      <GameStation />
       <Stub id="skills" n={4} title="SKILL TREE" note="skills screen" />
       <Stub id="patch" n={5} title="PATCH NOTES" note="dev log" />
       <Stub id="contact" n={6} title="CREDITS" note="contact screen" />
