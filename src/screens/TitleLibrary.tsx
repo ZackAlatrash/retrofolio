@@ -3,21 +3,16 @@ import {
   useRef,
   useState,
   type CSSProperties,
-  type ReactNode,
 } from "react";
 import { useReducedMotion } from "../motion/useReducedMotion";
-import {
-  FRAME_COUNT,
-  frameUrl,
-  posterUrl,
-} from "../hero/useHeroScrub";
+import { FRAME_COUNT, frameUrl, posterUrl } from "../hero/useHeroScrub";
 import { DecodeText } from "../hero/DecodeText";
-import { useSettings, pick } from "../game/settings";
+import { useSettings, pick, type Lang } from "../game/settings";
 import { Cartridge } from "../showcase/Cartridge";
 import {
   showcase,
   labelUrl,
-  crtUrl,
+  tvUrl,
   consoleUrl,
   roomUrl,
 } from "../showcase/showcaseData";
@@ -32,12 +27,18 @@ import {
 } from "../showcase/sequence";
 
 const PIXEL = '"Press Start 2P", ui-monospace, monospace';
-// CRT glass rect within the cropped TV image (percentages).
-const GLASS = { left: 4.9, top: 5.4, width: 90.2, height: 87.4 };
-// TV crop rect within the original 1376x768 video frame.
-const TV_IN_VIDEO = { x: 123, y: 6, w: 1130, h: 756 };
-const VIDEO_W = 1376;
-const VIDEO_H = 768;
+
+// --- the ONE television (pixel art, public/game/tv.webp, 1100x896 = 734x598 src) ---
+const TV_AR = 598 / 734; // height / width
+// glass rect within the TV image (measured)
+const GLASS = { left: 8.72, top: 10.2, width: 82.15, height: 75.08 };
+// glass centre line as a fraction of TV height (for phase-1 centering)
+const GLASS_CY = (GLASS.top + GLASS.height / 2) / 100;
+// where the old TV's glass sits within the hero video frames (fractions)
+const SRC = { x: 0.1296, y: 0.0612, w: 0.7406, h: 0.8605 };
+// fixed internal canvas resolution matching the glass aspect (603x449)
+const CANVAS_W = 1074;
+const CANVAS_H = 800;
 
 const TAGLINE = {
   en: "Grounded AI, shipped to production.",
@@ -46,6 +47,10 @@ const TAGLINE = {
 const FOOTER = {
   en: "© 2026 · HAARLEM, NL · AVAILABLE SUMMER 2026",
   nl: "© 2026 · HAARLEM · BESCHIKBAAR VANAF ZOMER 2026",
+};
+const SUBTITLE = {
+  en: "every cartridge is a real project I built and shipped",
+  nl: "elke cartridge is een echt project dat ik heb gebouwd en opgeleverd",
 };
 
 const lerp = (a: number, b: number, t: number) => a + (b - a) * t;
@@ -64,10 +69,11 @@ function useViewport() {
 }
 
 /**
- * The fused Title -> Game Library sequence (design: one continuous television).
- * Phase 1 scrubs the hero video; phase 2 pulls the camera back, revealing the
- * entertainment center while the screen flickers from the title to the
- * selected project; the rest phase holds the station for browsing.
+ * The fused Title -> Game Library sequence, shot as one continuous take on a
+ * single television. During the scrub the camera is nose-up against the glass
+ * (the TV is scaled so its screen covers the viewport) and the hero video's
+ * content plays inside it; the pull-back shrinks the very same TV into the
+ * game room, where it becomes the library preview screen.
  */
 export function TitleLibrary() {
   const { lang } = useSettings();
@@ -85,8 +91,10 @@ export function TitleLibrary() {
   const imagesRef = useRef<HTMLImageElement[]>([]);
   const [p, setP] = useState(forcedSeq != null ? parseFloat(forcedSeq) : 0);
   const { w: W, h: H } = useViewport();
-  const [selectedId, setSelectedId] = useState(showcase[0].id);
-  const entry = showcase.find((e) => e.id === selectedId) ?? showcase[0];
+  const [selectedId, setSelectedId] = useState<string | null>(null);
+  const entry = selectedId
+    ? showcase.find((e) => e.id === selectedId) ?? null
+    : null;
 
   const [armed, setArmed] = useState(false);
   useEffect(() => {
@@ -108,7 +116,7 @@ export function TitleLibrary() {
     imagesRef.current = imgs;
   }, [reduced]);
 
-  // Scroll -> progress + imperative canvas draw.
+  // Scroll -> progress + imperative canvas draw (source-cropped video content).
   useEffect(() => {
     if (reduced) return;
     const canvas = canvasRef.current;
@@ -116,7 +124,8 @@ export function TitleLibrary() {
     if (!canvas || !container) return;
     const ctx = canvas.getContext("2d");
     if (!ctx) return;
-    const dpr = Math.min(window.devicePixelRatio || 1, 2);
+    canvas.width = CANVAS_W;
+    canvas.height = CANVAS_H;
     let raf = 0;
 
     const progress = () => {
@@ -140,25 +149,22 @@ export function TitleLibrary() {
 
     const draw = () => {
       const pr = progress();
+      if (smooth(pr, S1, S2) > 0.55) return; // art has taken over
       const scrub = clamp01(pr / S1);
       const idx = Math.round(scrub * (FRAME_COUNT - 1));
       const img = pickImage(idx);
-      const cw = canvas.width;
-      const ch = canvas.height;
-      ctx.clearRect(0, 0, cw, ch);
-      if (img) {
-        const scale = Math.max(cw / img.naturalWidth, ch / img.naturalHeight);
-        const w = img.naturalWidth * scale;
-        const h = img.naturalHeight * scale;
-        ctx.drawImage(img, (cw - w) / 2, (ch - h) / 2, w, h);
-      }
-    };
-
-    const resize = () => {
-      const r = canvas.getBoundingClientRect();
-      canvas.width = Math.round(r.width * dpr);
-      canvas.height = Math.round(r.height * dpr);
-      draw();
+      ctx.clearRect(0, 0, CANVAS_W, CANVAS_H);
+      if (!img) return;
+      // source crop: the old TV's glass region within the video frame
+      const sx = SRC.x * img.naturalWidth;
+      const sy = SRC.y * img.naturalHeight;
+      const sw = SRC.w * img.naturalWidth;
+      const sh = SRC.h * img.naturalHeight;
+      // cover-fit the crop into the canvas
+      const scale = Math.max(CANVAS_W / sw, CANVAS_H / sh);
+      const dw = sw * scale;
+      const dh = sh * scale;
+      ctx.drawImage(img, sx, sy, sw, sh, (CANVAS_W - dw) / 2, (CANVAS_H - dh) / 2, dw, dh);
     };
 
     const onScroll = () => {
@@ -170,15 +176,14 @@ export function TitleLibrary() {
       });
     };
 
-    resize();
     onScroll();
     window.addEventListener("scroll", onScroll, { passive: true });
-    window.addEventListener("resize", resize);
+    window.addEventListener("resize", onScroll);
     const warm = window.setInterval(draw, 150);
     window.setTimeout(() => window.clearInterval(warm), 5000);
     return () => {
       window.removeEventListener("scroll", onScroll);
-      window.removeEventListener("resize", resize);
+      window.removeEventListener("resize", onScroll);
       cancelAnimationFrame(raf);
       window.clearInterval(warm);
     };
@@ -189,23 +194,27 @@ export function TitleLibrary() {
   const scrubP = clamp01(p / S1);
   const pullT = smooth(p, S1, S2);
 
-  // --- TV geometry: from video-matched rect to the station rect. ---
-  const cover = Math.max(W / VIDEO_W, H / VIDEO_H);
-  const oy = (H - VIDEO_H * cover) / 2;
-  const startW = TV_IN_VIDEO.w * cover;
-  const startTop = oy + TV_IN_VIDEO.y * cover;
-  const endW = Math.min(0.6 * W, Math.max(360, 1.42 * (H - 320)));
-  const endTop = Math.max(44, 0.065 * H);
-  const tvW = lerp(startW, endW, pullT);
-  const tvH = tvW * (756 / 1130);
-  const tvTop = lerp(startTop, endTop, pullT);
-  const cabW = Math.min(tvW * 1.14, W * 0.96);
-  const cabTop = tvTop + tvH - 6;
+  // --- ONE TV: nose-up against the glass -> sitting on the cabinet. ---
+  // Phase 1: size the TV so its glass covers the viewport.
+  const tvW1 = Math.max(W / (GLASS.width / 100), (H / (GLASS.height / 100)) / TV_AR);
+  const tvH1 = tvW1 * TV_AR;
+  const top1 = H / 2 - GLASS_CY * tvH1;
+  // Phase 2: the station TV.
+  // Fit the WHOLE station (TV + cabinet) in the viewport: total height is
+  // roughly 1.44x the TV width (TV 0.81 + cabinet 0.63).
+  const endTop = Math.max(40, 0.05 * H);
+  const endW = Math.min(0.56 * W, Math.max(320, (H - endTop - 14) / 1.44));
+  const tvW = lerp(tvW1, endW, pullT);
+  const tvH = tvW * TV_AR;
+  const tvTop = lerp(top1, endTop, pullT);
+  const cabW = Math.min(tvW * 1.5, W * 0.96);
+  const cabTop = tvTop + tvH - 8;
 
   const titleOpacity = 1 - smooth(pullT, 0, 0.22);
   const stationOpacity = smooth(pullT, 0.04, 0.3);
-  const artIn = smooth(pullT, 0.16, 0.42);
-  const noise = pullT > 0.001 && pullT < 0.3 ? 0.5 - Math.abs(pullT - 0.08) * 2 : 0;
+  const artIn = smooth(pullT, 0.18, 0.46);
+  const noise =
+    pullT > 0.001 && pullT < 0.3 ? 0.5 - Math.abs(pullT - 0.08) * 2 : 0;
 
   return (
     <div
@@ -237,20 +246,133 @@ export function TitleLibrary() {
         {/* the room behind the station */}
         <Room opacity={stationOpacity} />
 
-        {/* phase 1: the video */}
-        <canvas
-          ref={canvasRef}
-          aria-hidden="true"
+        {/* stage label + subtitle, fade in with the station */}
+        <div
+          aria-hidden={stationOpacity < 0.5}
           style={{
             position: "absolute",
-            inset: 0,
-            width: "100%",
-            height: "100%",
-            opacity: pullT < 0.06 ? 1 : Math.max(0, 1 - (pullT - 0.06) * 9),
+            top: Math.max(12, endTop - 34),
+            left: 0,
+            right: 0,
+            textAlign: "center",
+            opacity: stationOpacity * smooth(pullT, 0.5, 0.9),
+            zIndex: 4,
           }}
-        />
+        >
+          <div
+            className="font-mono"
+            style={{ fontSize: 10.5, letterSpacing: 2, color: "var(--term-green)" }}
+          >
+            {"// STAGE 02 · GAME LIBRARY"}
+          </div>
+          <div
+            className="font-mono"
+            style={{ fontSize: 10, letterSpacing: 0.6, color: "#8a93bd", marginTop: 4 }}
+          >
+            {pick(lang, SUBTITLE)}
+          </div>
+        </div>
 
-        {/* title overlay */}
+        {/* ==== THE television (persistent across both phases) ==== */}
+        <div
+          style={{
+            position: "absolute",
+            left: "50%",
+            top: tvTop,
+            width: tvW,
+            height: tvH,
+            transform: "translateX(-50%)",
+            zIndex: 3,
+          }}
+        >
+          {/* phosphor halo (station phase only) */}
+          <div
+            aria-hidden="true"
+            style={{
+              position: "absolute",
+              inset: "-12% -9%",
+              background:
+                "radial-gradient(60% 58% at 50% 46%, rgba(122,162,247,0.3), transparent 72%)",
+              pointerEvents: "none",
+              opacity: stationOpacity,
+            }}
+          />
+          <img
+            src={tvUrl}
+            alt=""
+            aria-hidden="true"
+            style={{
+              position: "absolute",
+              inset: 0,
+              width: "100%",
+              height: "100%",
+              filter: `drop-shadow(0 ${lerp(6, 24, pullT)}px ${lerp(20, 40, pullT)}px rgba(0,0,0,0.55))`,
+            }}
+          />
+          {/* the glass */}
+          <div
+            style={{
+              position: "absolute",
+              left: `${GLASS.left}%`,
+              top: `${GLASS.top}%`,
+              width: `${GLASS.width}%`,
+              height: `${GLASS.height}%`,
+              borderRadius: "3.4% / 4.6%",
+              overflow: "hidden",
+              background: "#0d1120",
+            }}
+          >
+            {/* the hero video content (source-cropped past the old bezel) */}
+            <canvas
+              ref={canvasRef}
+              aria-hidden="true"
+              style={{
+                position: "absolute",
+                inset: 0,
+                width: "100%",
+                height: "100%",
+                opacity: 1 - artIn,
+              }}
+            />
+            {/* library content */}
+            {entry ? (
+              <div key={entry.id} className="crt-flicker" style={{ position: "absolute", inset: 0, opacity: artIn }}>
+                <img
+                  src={labelUrl(entry.id)}
+                  alt=""
+                  aria-hidden="true"
+                  style={{
+                    position: "absolute",
+                    inset: 0,
+                    width: "100%",
+                    height: "100%",
+                    objectFit: "cover",
+                  }}
+                />
+                <ScreenChrome entry={entry} show={1} />
+              </div>
+            ) : (
+              <BootCard show={artIn} />
+            )}
+            {/* channel static at the handoff */}
+            {noise > 0 && (
+              <div
+                aria-hidden="true"
+                style={{
+                  position: "absolute",
+                  inset: 0,
+                  opacity: noise,
+                  background:
+                    "repeating-linear-gradient(0deg, rgba(255,255,255,0.22) 0 1px, rgba(10,10,18,0.5) 1px 3px)",
+                  mixBlendMode: "screen",
+                }}
+              />
+            )}
+            <GlassFX />
+          </div>
+        </div>
+
+        {/* title overlay (over the glass during the scrub) */}
         <div
           style={{
             position: "absolute",
@@ -263,6 +385,7 @@ export function TitleLibrary() {
             padding: "0 6vw",
             pointerEvents: titleOpacity > 0.4 ? "auto" : "none",
             opacity: titleOpacity,
+            zIndex: 4,
           }}
         >
           <div
@@ -319,118 +442,14 @@ export function TitleLibrary() {
 
         {/* scroll cue */}
         {armed && (
-          <div className="scroll-cue" aria-hidden="true" style={{ opacity: p < 0.015 ? 1 : 0 }}>
+          <div className="scroll-cue" aria-hidden="true" style={{ opacity: p < 0.015 ? 1 : 0, zIndex: 5 }}>
             <span className="cue-chev">▼</span>
             <span className="cue-txt">SCROLL TO POWER ON</span>
           </div>
         )}
 
-        {/* stage label, fades in with the station */}
-        <div
-          className="font-mono"
-          aria-hidden={stationOpacity < 0.5}
-          style={{
-            position: "absolute",
-            top: Math.max(14, endTop - 30),
-            left: 0,
-            right: 0,
-            textAlign: "center",
-            fontSize: 10.5,
-            letterSpacing: 2,
-            color: "var(--term-green)",
-            opacity: stationOpacity * smooth(pullT, 0.5, 0.9),
-          }}
-        >
-          {"// STAGE 02 · GAME LIBRARY"}
-        </div>
-
-        {/* ==== the station (TV + cabinet) ==== */}
+        {/* ==== the cabinet ==== */}
         <div aria-hidden={pullT < 0.05} style={{ opacity: stationOpacity }}>
-          {/* TV */}
-          <div
-            style={{
-              position: "absolute",
-              left: "50%",
-              top: tvTop,
-              width: tvW,
-              height: tvH,
-              transform: "translateX(-50%)",
-              zIndex: 3,
-            }}
-          >
-            <div
-              aria-hidden="true"
-              style={{
-                position: "absolute",
-                inset: "-12% -9%",
-                background:
-                  "radial-gradient(60% 58% at 50% 46%, rgba(122,162,247,0.3), transparent 72%)",
-                pointerEvents: "none",
-              }}
-            />
-            <img
-              src={crtUrl}
-              alt=""
-              aria-hidden="true"
-              style={{
-                position: "absolute",
-                inset: 0,
-                width: "100%",
-                height: "100%",
-                borderRadius: 18,
-                filter: "drop-shadow(0 24px 40px rgba(0,0,0,0.55))",
-              }}
-            />
-            <div
-              key={entry.id}
-              className="crt-flicker"
-              style={{
-                position: "absolute",
-                left: `${GLASS.left}%`,
-                top: `${GLASS.top}%`,
-                width: `${GLASS.width}%`,
-                height: `${GLASS.height}%`,
-                borderRadius: "24px / 30px",
-                overflow: "hidden",
-                background: "#0a0c16",
-              }}
-            >
-              <img
-                src={labelUrl(entry.id)}
-                alt=""
-                aria-hidden="true"
-                style={{
-                  position: "absolute",
-                  inset: 0,
-                  width: "100%",
-                  height: "100%",
-                  objectFit: "cover",
-                  opacity: artIn,
-                }}
-              />
-              <ScreenChrome entry={entry} show={artIn} />
-            </div>
-            {/* channel-change static */}
-            {noise > 0 && (
-              <div
-                aria-hidden="true"
-                style={{
-                  position: "absolute",
-                  left: `${GLASS.left}%`,
-                  top: `${GLASS.top}%`,
-                  width: `${GLASS.width}%`,
-                  height: `${GLASS.height}%`,
-                  borderRadius: "24px / 30px",
-                  opacity: noise,
-                  background:
-                    "repeating-linear-gradient(0deg, rgba(255,255,255,0.22) 0 1px, rgba(10,10,18,0.5) 1px 3px)",
-                  mixBlendMode: "screen",
-                }}
-              />
-            )}
-          </div>
-
-          {/* cabinet */}
           <div
             style={{
               position: "absolute",
@@ -447,7 +466,6 @@ export function TitleLibrary() {
                 "0 34px 70px rgba(0,0,0,0.6), inset 0 2px 0 rgba(255,255,255,0.06)",
             }}
           >
-            {/* light spill from the screen */}
             <div
               aria-hidden="true"
               style={{
@@ -543,11 +561,93 @@ export function TitleLibrary() {
   );
 }
 
+/** Scanlines + curvature, always on the glass. */
+function GlassFX() {
+  return (
+    <>
+      <div
+        aria-hidden="true"
+        style={{
+          position: "absolute",
+          inset: 0,
+          background:
+            "repeating-linear-gradient(rgba(0,0,0,0.22) 0 1px, transparent 1px 3px)",
+          pointerEvents: "none",
+        }}
+      />
+      <div
+        aria-hidden="true"
+        style={{
+          position: "absolute",
+          inset: 0,
+          background:
+            "radial-gradient(115% 90% at 50% 45%, transparent 58%, rgba(0,0,0,0.55) 100%)",
+          pointerEvents: "none",
+        }}
+      />
+    </>
+  );
+}
+
+/** Default library screen before any cartridge is hovered. */
+function BootCard({ show }: { show: number }) {
+  return (
+    <div
+      style={{
+        position: "absolute",
+        inset: 0,
+        display: "flex",
+        flexDirection: "column",
+        alignItems: "center",
+        justifyContent: "center",
+        gap: "5%",
+        textAlign: "center",
+        opacity: show,
+        background:
+          "radial-gradient(80% 70% at 50% 40%, #141a30 0%, #0d1120 70%)",
+      }}
+    >
+      <div
+        style={{
+          fontFamily: PIXEL,
+          fontSize: "clamp(10px, 1.7vw, 17px)",
+          color: "#f4f4fb",
+          textShadow: "2px 2px 0 rgba(20,10,60,0.9)",
+          lineHeight: 1.6,
+        }}
+      >
+        PLAYER 1
+        <br />
+        ZACK ALATRASH
+      </div>
+      <div
+        className="font-mono"
+        style={{
+          fontSize: "clamp(9px, 1.2vw, 12px)",
+          color: "#b8e394",
+          letterSpacing: 1,
+        }}
+      >
+        {showcase.length} TITLES SHIPPED · MORE IN DEVELOPMENT
+      </div>
+      <div
+        className="press-blink"
+        style={{
+          fontFamily: PIXEL,
+          fontSize: "clamp(7px, 1vw, 9px)",
+          color: "#8fb6ff",
+        }}
+      >
+        ▼ SELECT A CARTRIDGE
+      </div>
+    </div>
+  );
+}
+
 /** Wall, floor, glow pool and drifting dust behind the station. */
 function Room({ opacity }: { opacity: number }) {
   return (
     <div aria-hidden="true" style={{ position: "absolute", inset: 0, opacity }}>
-      {/* the generated game room */}
       <img
         src={roomUrl}
         alt=""
@@ -560,7 +660,6 @@ function Room({ opacity }: { opacity: number }) {
           filter: "brightness(0.82) saturate(0.92)",
         }}
       />
-      {/* gentle darkening so the room never competes with the station */}
       <div
         style={{
           position: "absolute",
@@ -569,7 +668,6 @@ function Room({ opacity }: { opacity: number }) {
             "radial-gradient(70% 62% at 50% 44%, rgba(6,8,14,0.28), rgba(6,8,14,0.55) 100%)",
         }}
       />
-      {/* corner vignette */}
       <div
         style={{
           position: "absolute",
@@ -578,7 +676,6 @@ function Room({ opacity }: { opacity: number }) {
             "radial-gradient(120% 95% at 50% 42%, transparent 55%, rgba(0,0,0,0.6) 100%)",
         }}
       />
-      {/* dust motes in the phosphor light */}
       {opacity > 0.15 &&
         DUST.map((d, i) => (
           <span
@@ -609,8 +706,14 @@ const DUST = [
   { left: "36%", top: "48%", delay: "6.8s", dur: "12s", size: 2 },
 ];
 
-/** Title/genre/stat overlay on the station screen. */
-function ScreenChrome({ entry, show }: { entry: (typeof showcase)[number]; show: number }) {
+/** Title/genre/stat overlay + developer credit on the station screen. */
+function ScreenChrome({
+  entry,
+  show,
+}: {
+  entry: (typeof showcase)[number];
+  show: number;
+}) {
   return (
     <>
       <div
@@ -620,7 +723,7 @@ function ScreenChrome({ entry, show }: { entry: (typeof showcase)[number]; show:
           inset: 0,
           opacity: show,
           background:
-            "linear-gradient(180deg, rgba(5,7,14,0.15) 0%, transparent 30%, transparent 48%, rgba(4,6,12,0.9) 88%)",
+            "linear-gradient(180deg, rgba(5,7,14,0.15) 0%, transparent 30%, transparent 46%, rgba(4,6,12,0.92) 86%)",
         }}
       />
       <div
@@ -628,7 +731,7 @@ function ScreenChrome({ entry, show }: { entry: (typeof showcase)[number]; show:
           position: "absolute",
           left: "6%",
           right: "6%",
-          bottom: "7%",
+          bottom: "11%",
           display: "flex",
           alignItems: "flex-end",
           justifyContent: "space-between",
@@ -687,35 +790,35 @@ function ScreenChrome({ entry, show }: { entry: (typeof showcase)[number]; show:
           ▸ PRESS START
         </div>
       </div>
-      {/* scanlines + curvature */}
+      {/* the developer credit, where a game would put its copyright */}
       <div
         aria-hidden="true"
         style={{
           position: "absolute",
-          inset: 0,
-          background:
-            "repeating-linear-gradient(rgba(0,0,0,0.22) 0 1px, transparent 1px 3px)",
-          pointerEvents: "none",
+          left: 0,
+          right: 0,
+          bottom: "3.6%",
+          textAlign: "center",
+          fontFamily: "var(--font-mono)",
+          fontSize: "clamp(7px, 0.9vw, 10px)",
+          letterSpacing: 1,
+          color: "#7d86ad",
+          opacity: show,
+          textShadow: "0 1px 3px rgba(0,0,0,0.9)",
         }}
-      />
-      <div
-        aria-hidden="true"
-        style={{
-          position: "absolute",
-          inset: 0,
-          background:
-            "radial-gradient(115% 90% at 50% 45%, transparent 58%, rgba(0,0,0,0.55) 100%)",
-          pointerEvents: "none",
-        }}
-      />
+      >
+        © 2026 ZACK ALATRASH · DEVELOPER
+      </div>
     </>
   );
 }
 
 /** Reduced-motion fallback: static title, then the station as a normal section. */
-function ReducedTitleLibrary({ lang }: { lang: "en" | "nl" }) {
-  const [selectedId, setSelectedId] = useState(showcase[0].id);
-  const entry = showcase.find((e) => e.id === selectedId) ?? showcase[0];
+function ReducedTitleLibrary({ lang }: { lang: Lang }) {
+  const [selectedId, setSelectedId] = useState<string | null>(null);
+  const entry = selectedId
+    ? showcase.find((e) => e.id === selectedId) ?? null
+    : null;
   return (
     <>
       <section
@@ -758,59 +861,75 @@ function ReducedTitleLibrary({ lang }: { lang: "en" | "nl" }) {
           flexDirection: "column",
           alignItems: "center",
           justifyContent: "center",
-          gap: 18,
+          gap: 6,
           padding: "72px 16px 48px",
         }}
       >
-        <Station>
-          <div style={{ position: "relative", width: "min(600px, 94vw)", aspectRatio: "1130/756" }}>
-            <img src={crtUrl} alt="" aria-hidden="true" style={{ width: "100%" }} />
-            <div
-              style={{
-                position: "absolute",
-                left: `${GLASS.left}%`,
-                top: `${GLASS.top}%`,
-                width: `${GLASS.width}%`,
-                height: `${GLASS.height}%`,
-                borderRadius: "24px / 30px",
-                overflow: "hidden",
-              }}
-            >
-              <img
-                src={labelUrl(entry.id)}
-                alt=""
-                aria-hidden="true"
-                style={{ position: "absolute", inset: 0, width: "100%", height: "100%", objectFit: "cover" }}
-              />
-              <ScreenChrome entry={entry} show={1} />
-            </div>
+        <div style={{ textAlign: "center", marginBottom: 8 }}>
+          <div
+            className="font-mono"
+            style={{ fontSize: 10.5, letterSpacing: 2, color: "var(--term-green)" }}
+          >
+            {"// STAGE 02 · GAME LIBRARY"}
           </div>
           <div
+            className="font-mono"
+            style={{ fontSize: 10, letterSpacing: 0.6, color: "#8a93bd", marginTop: 4 }}
+          >
+            {pick(lang, SUBTITLE)}
+          </div>
+        </div>
+        <div style={{ position: "relative", width: "min(540px, 92vw)", aspectRatio: "734/598" }}>
+          <img src={tvUrl} alt="" aria-hidden="true" style={{ width: "100%" }} />
+          <div
             style={{
-              display: "grid",
-              gridTemplateColumns: "repeat(auto-fit, minmax(110px, 1fr))",
-              gap: 12,
-              width: "min(680px, 96vw)",
+              position: "absolute",
+              left: `${GLASS.left}%`,
+              top: `${GLASS.top}%`,
+              width: `${GLASS.width}%`,
+              height: `${GLASS.height}%`,
+              borderRadius: "3.4% / 4.6%",
+              overflow: "hidden",
+              background: "#0d1120",
             }}
           >
-            {showcase.map((e) => (
-              <Cartridge
-                key={e.id}
-                entry={e}
-                selected={e.id === selectedId}
-                onSelect={setSelectedId}
-                onOpen={setSelectedId}
-              />
-            ))}
+            {entry ? (
+              <>
+                <img
+                  src={labelUrl(entry.id)}
+                  alt=""
+                  aria-hidden="true"
+                  style={{ position: "absolute", inset: 0, width: "100%", height: "100%", objectFit: "cover" }}
+                />
+                <ScreenChrome entry={entry} show={1} />
+              </>
+            ) : (
+              <BootCard show={1} />
+            )}
+            <GlassFX />
           </div>
-        </Station>
+        </div>
+        <div
+          style={{
+            display: "grid",
+            gridTemplateColumns: "repeat(auto-fit, minmax(110px, 1fr))",
+            gap: 12,
+            width: "min(680px, 96vw)",
+          }}
+        >
+          {showcase.map((e) => (
+            <Cartridge
+              key={e.id}
+              entry={e}
+              selected={e.id === selectedId}
+              onSelect={setSelectedId}
+              onOpen={setSelectedId}
+            />
+          ))}
+        </div>
       </section>
     </>
   );
-}
-
-function Station({ children }: { children: ReactNode }) {
-  return <>{children}</>;
 }
 
 const ventStyle: CSSProperties = {
