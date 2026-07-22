@@ -5,6 +5,10 @@ export type ShellColor = "grey" | "indigo" | "purple" | "green" | "red";
 
 export interface ShowcaseEntry {
   id: string;
+  /** Short display title for the CRT (pixel font friendly). */
+  title: string;
+  /** Extra-short name for the rack plaque. */
+  plaque: string;
   shell: ShellColor;
   genre: string;
   headline: string;
@@ -13,13 +17,13 @@ export interface ShowcaseEntry {
 
 // The 7 projects we have cartridge art for so far, flagship-first.
 const RAW: Omit<ShowcaseEntry, "project">[] = [
-  { id: "omnipotence", shell: "purple", genre: "CODE-AWARE RAG ENGINE", headline: "7,200 LOC · deployed company-wide" },
-  { id: "recomp-tracker", shell: "green", genre: "ANDROID · AI COACH", headline: "65k LOC · 1,300 tests · beta" },
-  { id: "consented-cart", shell: "red", genre: "SHOPIFY · GDPR", headline: "12.3k LOC · 16 entities" },
-  { id: "lex-ai", shell: "indigo", genre: "RAG · NUMPY VECTOR DB", headline: "87 docs · 0.55 evidence gate" },
-  { id: "tulipvision", shell: "green", genre: "YOLO · AZURE", headline: "0.86 mAP · university-adopted" },
-  { id: "locked-in", shell: "grey", genre: "iOS · POLICY ENGINE", headline: "4 clean layers · pure Swift" },
-  { id: "kukis", shell: "red", genre: "REACT · LIVE SITE", headline: "96-frame scroll hero · live" },
+  { id: "omnipotence", title: "OMNIPOTENCE", plaque: "OMNIPOTENCE", shell: "purple", genre: "CODE-AWARE RAG ENGINE", headline: "7,200 LOC · deployed company-wide" },
+  { id: "recomp-tracker", title: "RECOMP TRACKER", plaque: "RECOMP", shell: "green", genre: "ANDROID · AI COACH", headline: "65k LOC · 1,300 tests · beta" },
+  { id: "consented-cart", title: "CONSENTED CART", plaque: "CONSENTED", shell: "red", genre: "SHOPIFY · GDPR", headline: "12.3k LOC · 16 entities" },
+  { id: "lex-ai", title: "LEX-AI", plaque: "LEX-AI", shell: "indigo", genre: "RAG · NUMPY VECTOR DB", headline: "87 docs · 0.55 evidence gate" },
+  { id: "tulipvision", title: "TULIPVISION", plaque: "TULIPVISION", shell: "green", genre: "YOLO · AZURE", headline: "0.86 mAP · university-adopted" },
+  { id: "locked-in", title: "LOCKED IN", plaque: "LOCKED IN", shell: "grey", genre: "iOS · POLICY ENGINE", headline: "4 clean layers · pure Swift" },
+  { id: "kukis", title: "KUKIS", plaque: "KUKIS", shell: "red", genre: "REACT · LIVE SITE", headline: "96-frame scroll hero · live" },
 ];
 
 export const showcase: ShowcaseEntry[] = RAW.map((e) => {
