@@ -1,22 +1,20 @@
-import { TitleScreen } from "../screens/TitleScreen";
+import { TitleLibrary } from "../screens/TitleLibrary";
 import { GameNav } from "./GameNav";
 import { HelpWidget } from "./HelpWidget";
 import { CrtOverlay } from "./CrtOverlay";
 import { useGameRoute } from "./useGameRoute";
-import { GameStation } from "../showcase/GameStation";
 
 /**
- * The retro-game shell: the Title screen, the remaining screens (stubs for now,
- * built in order), the game HUD nav that the title menu morphs into, the
- * floating chat, and the CRT overlay.
+ * The retro-game shell: the fused Title + Game Library sequence (one continuous
+ * television), the remaining screens (stubs for now, built in order), the game
+ * HUD nav, the floating chat, and the CRT overlay.
  */
 export function GameShell() {
   const { reveal, morph, active } = useGameRoute();
   return (
     <>
-      <TitleScreen />
-      <Stub id="about" n={2} title="ABOUT" note="the character card is built here" />
-      <GameStation />
+      <TitleLibrary />
+      <Stub id="about" n={3} title="ABOUT" note="the character card is built here" />
       <Stub id="skills" n={4} title="SKILL TREE" note="skills screen" />
       <Stub id="patch" n={5} title="PATCH NOTES" note="dev log" />
       <Stub id="contact" n={6} title="CREDITS" note="contact screen" />

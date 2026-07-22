@@ -5,8 +5,7 @@ import {
   type ShowcaseEntry,
 } from "./showcaseData";
 
-// Where the cream label sits within the (square) cartridge image, as a % of the
-// image box. Tuned to the shell art; adjust here if the art changes.
+// Where the cream label sits within the trimmed cartridge image (percentages).
 const LABEL = { left: "16.2%", top: "23.7%", width: "63.9%", height: "46%" };
 
 interface CartridgeProps {
@@ -17,45 +16,43 @@ interface CartridgeProps {
 }
 
 /**
- * One cartridge standing in a recessed rack slot. The lower edge tucks behind
- * the slot's front lip (which carries the name plaque); hover/selection lifts
- * the cartridge out of the slot.
+ * One cartridge standing on the open shelf ledge: no recessed box, just the
+ * cart with a soft contact shadow and a small name tag beneath. Hover/selection
+ * lifts and enlarges it.
  */
 export function Cartridge({ entry, selected, onSelect, onOpen }: CartridgeProps) {
   const { project } = entry;
+  const dot = statusColor(project);
   return (
     <button
       onMouseEnter={() => onSelect(entry.id)}
       onFocus={() => onSelect(entry.id)}
       onClick={() => onOpen(entry.id)}
       aria-label={`${project.name}: ${entry.genre}`}
-      className="rack-slot"
       style={{
         position: "relative",
-        background: "linear-gradient(180deg, #0b0c16 0%, #12131f 100%)",
-        border: "1px solid #05060c",
-        borderRadius: 5,
-        boxShadow: selected
-          ? "inset 0 10px 22px rgba(0,0,0,0.65), 0 0 14px rgba(122,162,247,0.22), 0 0 0 1px #3b4160"
-          : "inset 0 10px 22px rgba(0,0,0,0.65), inset 0 -4px 10px rgba(0,0,0,0.4)",
-        padding: "10px 8px 0",
+        background: "transparent",
+        border: "none",
+        padding: 0,
         cursor: "pointer",
-        overflow: "visible",
+        display: "flex",
+        flexDirection: "column",
+        alignItems: "center",
       }}
     >
-      {/* cartridge (lifts on hover/select) */}
+      {/* the cart */}
       <div
         style={{
           position: "relative",
-          zIndex: 1,
           width: "100%",
           aspectRatio: "716 / 592",
-          marginBottom: 10,
-          transform: selected ? "translateY(-12px)" : "none",
-          transition: "transform 0.16s ease",
+          transform: selected ? "translateY(-14px) scale(1.1)" : "none",
+          transformOrigin: "bottom center",
+          transition: "transform 0.18s ease, filter 0.18s ease",
           filter: selected
-            ? "drop-shadow(0 10px 16px rgba(0,0,0,0.6)) brightness(1.08)"
-            : "drop-shadow(0 4px 8px rgba(0,0,0,0.45))",
+            ? "drop-shadow(0 16px 20px rgba(0,0,0,0.65)) brightness(1.1)"
+            : "drop-shadow(0 6px 8px rgba(0,0,0,0.5))",
+          zIndex: selected ? 2 : 1,
         }}
       >
         <img
@@ -80,51 +77,52 @@ export function Cartridge({ entry, selected, onSelect, onOpen }: CartridgeProps)
         />
       </div>
 
-      {/* front lip with name plaque */}
+      {/* contact shadow on the ledge */}
       <div
         aria-hidden="true"
         style={{
-          position: "absolute",
-          left: -1,
-          right: -1,
-          bottom: -1,
-          height: 26,
-          zIndex: 2,
-          borderRadius: "0 0 5px 5px",
-          background: "linear-gradient(180deg, #2b2d3d 0%, #1d1f2d 100%)",
-          borderTop: "2px solid #0b0c14",
-          border: "1px solid #05060c",
+          width: "72%",
+          height: 10,
+          marginTop: -5,
+          borderRadius: "50%",
+          background:
+            "radial-gradient(50% 50% at 50% 50%, rgba(0,0,0,0.55), transparent 70%)",
+          opacity: selected ? 0.35 : 0.7,
+          transition: "opacity 0.18s ease",
+        }}
+      />
+
+      {/* name tag */}
+      <span
+        className="font-mono"
+        style={{
           display: "flex",
           alignItems: "center",
-          justifyContent: "center",
-          gap: 4,
-          padding: "0 5px",
+          gap: 5,
+          marginTop: 5,
+          padding: "3px 8px",
+          borderRadius: 4,
+          fontSize: 8.5,
+          letterSpacing: 0.3,
+          whiteSpace: "nowrap",
+          background: selected ? "rgba(122,162,247,0.16)" : "rgba(0,0,0,0.28)",
+          color: selected ? "var(--term-fg)" : "#9298b4",
+          transition: "background 0.18s ease, color 0.18s ease",
         }}
       >
         <span
+          aria-hidden="true"
           style={{
             width: 5,
             height: 5,
             borderRadius: "50%",
-            background: statusColor(project),
+            background: dot,
+            boxShadow: `0 0 5px ${dot}`,
             flex: "none",
-            boxShadow: `0 0 5px ${statusColor(project)}`,
           }}
         />
-        <span
-          className="font-mono"
-          style={{
-            fontSize: 7.5,
-            letterSpacing: 0,
-            whiteSpace: "nowrap",
-            overflow: "hidden",
-            textOverflow: "ellipsis",
-            color: selected ? "var(--term-fg)" : "#8a8fa8",
-          }}
-        >
-          {entry.plaque}
-        </span>
-      </div>
+        {entry.plaque}
+      </span>
     </button>
   );
 }
