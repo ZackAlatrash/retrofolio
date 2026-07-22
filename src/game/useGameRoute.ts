@@ -1,29 +1,39 @@
 import { useEffect, useState } from "react";
 import { SCREENS } from "./screens";
 
+function smoothstep(x: number, a: number, b: number) {
+  if (b <= a) return x >= b ? 1 : 0;
+  const t = Math.max(0, Math.min(1, (x - a) / (b - a)));
+  return t * t * (3 - 2 * t);
+}
+
 /**
- * Drives the shell: the HUD reveal progress (as the title screen exits, the
- * menu hands off into the global HUD), and the currently-active screen for
- * highlighting the level-select. Also honors a deep-link hash on load.
+ * Drives the shell:
+ * - `reveal` (0..1): the nav fades in near the end of the title scrub.
+ * - `morph` (0..1): the centered title menu travels up into the HUD bar as the
+ *   title screen exits.
+ * - `active`: the current screen, for the level highlight.
  */
 export function useGameRoute() {
-  const [hudProgress, setHudProgress] = useState(0);
+  const [reveal, setReveal] = useState(0);
+  const [morph, setMorph] = useState(0);
   const [active, setActive] = useState<string>("title");
 
-  // HUD reveal: 0 while the title screen owns the viewport, ramps to 1 as it
-  // scrolls out, so the title menu appears to lift into the top bar.
   useEffect(() => {
     let raf = 0;
     const compute = () => {
       const title = document.getElementById("title");
       const vh = window.innerHeight || 1;
-      let progress = 1;
+      let r = 1;
+      let m = 1;
       if (title) {
-        const bottom = title.getBoundingClientRect().bottom;
-        // bottom = vh*1.6 -> 0 (below), vh*0.4 -> 1 (title nearly gone)
-        progress = Math.max(0, Math.min(1, (1.6 * vh - bottom) / (1.2 * vh)));
+        const scrubEnd = Math.max(0, title.offsetHeight - vh);
+        const y = window.scrollY;
+        r = scrubEnd > 0 ? smoothstep(y, scrubEnd * 0.82, scrubEnd) : 1;
+        m = smoothstep(y, scrubEnd, scrubEnd + vh * 0.55);
       }
-      setHudProgress((prev) => (Math.abs(prev - progress) > 0.01 ? progress : prev));
+      setReveal((p) => (Math.abs(p - r) > 0.004 ? r : p));
+      setMorph((p) => (Math.abs(p - m) > 0.004 ? m : p));
     };
     const onScroll = () => {
       cancelAnimationFrame(raf);
@@ -39,7 +49,6 @@ export function useGameRoute() {
     };
   }, []);
 
-  // Active screen via IntersectionObserver on each screen anchor.
   useEffect(() => {
     const els = SCREENS.map((s) => document.getElementById(s.id)).filter(
       (el): el is HTMLElement => !!el,
@@ -52,13 +61,12 @@ export function useGameRoute() {
           .sort((a, b) => b.intersectionRatio - a.intersectionRatio)[0];
         if (visible?.target.id) setActive(visible.target.id);
       },
-      { threshold: [0.35, 0.6], rootMargin: "-20% 0px -40% 0px" },
+      { threshold: [0.35, 0.6], rootMargin: "-15% 0px -40% 0px" },
     );
     els.forEach((el) => io.observe(el));
     return () => io.disconnect();
   }, []);
 
-  // Deep-link: if the URL has a screen hash, jump to it once mounted.
   useEffect(() => {
     const id = window.location.hash.replace("#", "");
     if (id && document.getElementById(id)) {
@@ -68,5 +76,5 @@ export function useGameRoute() {
     }
   }, []);
 
-  return { hudProgress, active };
+  return { reveal, morph, active };
 }

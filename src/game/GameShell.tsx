@@ -1,16 +1,16 @@
 import { TitleScreen } from "../screens/TitleScreen";
-import { Hud } from "./Hud";
+import { GameNav } from "./GameNav";
 import { HelpWidget } from "./HelpWidget";
 import { CrtOverlay } from "./CrtOverlay";
 import { useGameRoute } from "./useGameRoute";
 
 /**
  * The retro-game shell: the Title screen, the remaining screens (stubs for now,
- * built in order), the persistent HUD that the title menu lifts into, the
+ * built in order), the game HUD nav that the title menu morphs into, the
  * floating chat, and the CRT overlay.
  */
 export function GameShell() {
-  const { hudProgress, active } = useGameRoute();
+  const { reveal, morph, active } = useGameRoute();
   return (
     <>
       <TitleScreen />
@@ -19,7 +19,7 @@ export function GameShell() {
       <Stub id="skills" n={4} title="SKILL TREE" note="skills screen" />
       <Stub id="patch" n={5} title="PATCH NOTES" note="dev log" />
       <Stub id="contact" n={6} title="CREDITS" note="contact screen" />
-      <Hud hudProgress={hudProgress} active={active} />
+      <GameNav reveal={reveal} morph={morph} active={active} />
       <HelpWidget />
       <CrtOverlay />
     </>

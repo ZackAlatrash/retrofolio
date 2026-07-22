@@ -4,13 +4,6 @@ import { useHeroScrub, posterUrl } from "../hero/useHeroScrub";
 import { DecodeText } from "../hero/DecodeText";
 import { useSettings, pick } from "../game/settings";
 
-const MENU = [
-  { en: "START", nl: "START", target: "projects" },
-  { en: "ABOUT", nl: "OVER MIJ", target: "about" },
-  { en: "SKILLS", nl: "VAARDIGHEDEN", target: "skills" },
-  { en: "CONTACT", nl: "CONTACT", target: "contact" },
-];
-
 const TAGLINE = {
   en: "Grounded AI, shipped to production.",
   nl: "Gefundeerde AI, in productie gebracht.",
@@ -101,39 +94,14 @@ export function TitleScreen() {
           {pick(lang, TAGLINE)}
         </p>
 
-        <nav
-          aria-label="Main menu"
-          style={{
-            display: "flex",
-            gap: "clamp(14px, 3vw, 34px)",
-            justifyContent: "center",
-            flexWrap: "wrap",
-            marginTop: 26,
-          }}
-        >
-          {MENU.map((m, i) => (
-            <button
-              key={m.target}
-              onClick={() => scrollToId(m.target)}
-              className="font-mono"
-              style={{
-                ...menuItem,
-                color: i === 0 ? "var(--term-amber)" : "var(--term-fg)",
-                opacity: reduced ? 1 : smooth(p, 0.78 + i * 0.03, 0.9 + i * 0.03),
-              }}
-            >
-              {pick(lang, m)}
-            </button>
-          ))}
-        </nav>
-
         <button
           onClick={() => scrollToId("projects")}
           style={{
             ...pressStart,
-            opacity: reduced ? 1 : smooth(p, 0.9, 0.99),
+            marginTop: 30,
+            opacity: reduced ? 1 : smooth(p, 0.86, 0.97),
           }}
-          className={!reduced && p > 0.92 ? "press-blink" : undefined}
+          className={!reduced && p > 0.9 ? "press-blink" : undefined}
         >
           {"▸"} PRESS START
         </button>
@@ -224,16 +192,6 @@ const tagline: CSSProperties = {
   color: "var(--term-green)",
   marginTop: 20,
   letterSpacing: 0.4,
-};
-
-const menuItem: CSSProperties = {
-  fontFamily: "var(--font-mono)",
-  fontSize: "clamp(11px, 1.5vw, 14px)",
-  letterSpacing: 2,
-  background: "transparent",
-  border: "none",
-  cursor: "pointer",
-  padding: 4,
 };
 
 const pressStart: CSSProperties = {
