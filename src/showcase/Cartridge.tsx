@@ -23,7 +23,7 @@ export function Cartridge({ entry, selected, onSelect, onOpen }: CartridgeProps)
       onMouseEnter={() => onSelect(entry.id)}
       onFocus={() => onSelect(entry.id)}
       onClick={() => onOpen(entry.id)}
-      aria-label={`${project.name} — ${entry.genre}`}
+      aria-label={`${project.name}: ${entry.genre}`}
       className="cartridge"
       style={{
         background: "transparent",
