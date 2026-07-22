@@ -349,7 +349,7 @@ export function TitleLibrary() {
             opacity: stationOpacity * smooth(pullT, 0.5, 0.9),
           }}
         >
-          {"// STAGE 02 — GAME LIBRARY"}
+          {"// STAGE 02 · GAME LIBRARY"}
         </div>
 
         {/* ==== the station (TV + cabinet) ==== */}
