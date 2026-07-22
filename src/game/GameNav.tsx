@@ -11,7 +11,9 @@ const ITEMS = [
   { id: "contact", label: "CONTACT" },
 ];
 
+const BAR_H = 58;
 const lerp = (a: number, b: number, t: number) => a + (b - a) * t;
+const clamp = (x: number, a: number, b: number) => Math.max(a, Math.min(b, x));
 
 function useWindowSize() {
   const [size, setSize] = useState(() => ({
@@ -34,31 +36,37 @@ interface GameNavProps {
 }
 
 /**
- * The persistent game HUD. On the title screen the nav items sit centered under
- * the name; as the title exits they travel and shrink up into a HUD bar while
- * the player chip, coin, keycap toggles and control hints boot in around them.
+ * The persistent game HUD. On the title screen the nav sits centered under the
+ * name as a big title-screen menu; as the title exits it descends (staying
+ * centered, spacing tightening) into a chunky HUD bar, while the player chip,
+ * coin, keycap toggles and control hints boot in at the edges.
  */
 export function GameNav({ reveal, morph, active }: GameNavProps) {
   const prefersReduced = useReducedMotion();
-  const forceMotion =
-    typeof window !== "undefined" &&
-    new URLSearchParams(window.location.search).has("motion");
+  const params =
+    typeof window !== "undefined"
+      ? new URLSearchParams(window.location.search)
+      : new URLSearchParams();
+  const forceMotion = params.has("motion");
+  const forcedM = params.get("m"); // debug: force a fixed morph value
   const reduced = prefersReduced && !forceMotion;
 
-  const t = reduced ? 1 : morph;
-  const r = reduced ? 1 : reveal;
+  const t = forcedM != null ? parseFloat(forcedM) : reduced ? 1 : morph;
+  const r = forcedM != null ? 1 : reduced ? 1 : reveal;
+
   const { w: W, h: H } = useWindowSize();
   const { crt, toggleCrt, sound, toggleSound, lang, setLang } = useSettings();
   const { theme, setTheme } = useTheme();
   const isLight = theme === "paper";
 
   const n = ITEMS.length;
-  const barGap = Math.min(112, Math.max(74, (W - 340) / n));
-  const barStart = 156;
-  const heroGap = Math.min(168, (W - 40) / n);
-  const heroStart = (W - heroGap * n) / 2 + heroGap / 2;
-  const heroY = H * 0.64;
-  const barY = 21;
+  const mid = (n - 1) / 2;
+  const cx = W / 2;
+  const heroGap = clamp((W - 120) / (n - 1), 130, 220);
+  const barGap = clamp((W - 560) / (n - 1), 118, 172);
+  const gap = lerp(heroGap, barGap, t);
+  const y = lerp(H * 0.66, BAR_H / 2, t);
+  const scale = lerp(1.5, 0.95, t);
   const chromeOn = t > 0.5;
 
   return (
@@ -78,10 +86,11 @@ export function GameNav({ reveal, morph, active }: GameNavProps) {
           top: 0,
           left: 0,
           right: 0,
-          height: 42,
-          background: "color-mix(in srgb, var(--term-bg) 92%, transparent)",
+          height: BAR_H,
+          background: "color-mix(in srgb, var(--term-bg) 94%, transparent)",
           borderBottom: "2px solid var(--term-accent)",
-          backdropFilter: "blur(8px)",
+          boxShadow: "0 2px 20px rgba(0,0,0,0.35)",
+          backdropFilter: "blur(10px)",
           opacity: t,
           pointerEvents: chromeOn ? "auto" : "none",
         }}
@@ -91,11 +100,11 @@ export function GameNav({ reveal, morph, active }: GameNavProps) {
             position: "absolute",
             left: 0,
             right: 0,
-            bottom: -3,
+            bottom: -4,
             height: 2,
             background:
               "linear-gradient(90deg, var(--term-green), var(--term-accent) 55%, transparent)",
-            opacity: 0.5,
+            opacity: 0.55,
           }}
         />
         <button
@@ -103,21 +112,30 @@ export function GameNav({ reveal, morph, active }: GameNavProps) {
           aria-label="Back to title"
           style={{
             position: "absolute",
-            left: 12,
+            left: 18,
             top: "50%",
             transform: "translateY(-50%)",
             display: "flex",
             alignItems: "center",
-            gap: 7,
+            gap: 9,
             background: "transparent",
             border: "none",
             cursor: "pointer",
           }}
         >
-          <span style={{ ...pixel, fontSize: 8, color: "var(--term-amber)" }}>
+          <span
+            style={{
+              ...pixel,
+              fontSize: 9,
+              color: "var(--term-bg)",
+              background: "var(--term-amber)",
+              padding: "5px 6px",
+              borderRadius: 4,
+            }}
+          >
             P1
           </span>
-          <span style={{ fontSize: 11, color: "var(--term-fg)", letterSpacing: 0.5 }}>
+          <span style={{ fontSize: 14, color: "var(--term-fg)", letterSpacing: 0.5 }}>
             ZACK ALATRASH
           </span>
         </button>
@@ -125,30 +143,31 @@ export function GameNav({ reveal, morph, active }: GameNavProps) {
         <div
           style={{
             position: "absolute",
-            right: 12,
+            right: 16,
             top: "50%",
             transform: "translateY(-50%)",
             display: "flex",
             alignItems: "center",
-            gap: 6,
+            gap: 8,
           }}
         >
-          <span style={{ fontSize: 10, color: "var(--term-accent)", marginRight: 2 }}>
+          <span
+            style={{ fontSize: 13, color: "var(--term-accent)", marginRight: 4, letterSpacing: 0.5 }}
+          >
             ◆ 12
           </span>
-          <Key label={isLight ? "☀" : "☾"} title="Light / dark" onClick={() => setTheme(isLight ? "tokyo-night" : "paper")} />
+          <Key big label={isLight ? "☀" : "☾"} title="Light / dark" onClick={() => setTheme(isLight ? "tokyo-night" : "paper")} />
           <Key label="CRT" title="CRT scanlines" on={crt} onClick={toggleCrt} />
-          <Key label={sound ? "♪" : "♪̸"} title="Sound" on={sound} onClick={toggleSound} />
+          <Key big label={sound ? "♪" : "♪̸"} title="Sound" on={sound} onClick={toggleSound} />
           <Key label={lang.toUpperCase()} title="Language" onClick={() => setLang(lang === "en" ? "nl" : "en")} />
         </div>
       </div>
 
-      {/* nav items (morphing) */}
+      {/* nav items: centered group, descends into the bar */}
       {ITEMS.map((item, i) => {
-        const x = lerp(heroStart + i * heroGap, barStart + i * barGap, t);
-        const y = lerp(heroY, barY, t);
-        const s = lerp(1, 0.62, t);
-        const isActive = chromeOn && active === item.id;
+        const x = cx + (i - mid) * gap;
+        const isActive = active === item.id;
+        const highlight = chromeOn && isActive;
         return (
           <button
             key={item.id}
@@ -158,27 +177,23 @@ export function GameNav({ reveal, morph, active }: GameNavProps) {
               position: "absolute",
               left: x,
               top: y,
-              transform: `translate(-50%, -50%) scale(${s})`,
+              transform: `translate(-50%, -50%) scale(${scale})`,
               transformOrigin: "center",
               fontFamily: "var(--font-mono)",
-              fontSize: 15,
+              fontSize: 16,
               letterSpacing: 1,
               whiteSpace: "nowrap",
               cursor: "pointer",
               pointerEvents: "auto",
-              border: "none",
-              borderRadius: 6,
-              padding: chromeOn ? "5px 9px" : "4px 6px",
+              border: highlight ? "1px solid var(--term-accent)" : "1px solid transparent",
+              borderRadius: 7,
+              padding: "6px 12px",
               opacity: r,
-              background: isActive ? "var(--term-accent)" : "transparent",
-              color: isActive
-                ? "var(--term-bg)"
-                : i === 0 && !chromeOn
-                  ? "var(--term-amber)"
-                  : "var(--term-fg)",
+              background: highlight ? "var(--term-accent)" : "transparent",
+              color: highlight ? "var(--term-bg)" : "var(--term-fg)",
             }}
           >
-            <span style={{ ...pixel, fontSize: "0.62em", color: "var(--term-dim)", marginRight: 6 }}>
+            <span style={{ ...pixel, fontSize: "0.6em", color: highlight ? "var(--term-bg)" : "var(--term-green)", marginRight: 8, opacity: 0.85 }}>
               {String(i + 1).padStart(2, "0")}
             </span>
             {item.label}
@@ -193,12 +208,12 @@ export function GameNav({ reveal, morph, active }: GameNavProps) {
           bottom: 0,
           left: 0,
           right: 0,
-          height: 26,
+          height: 30,
           display: "flex",
           alignItems: "center",
-          gap: 16,
-          padding: "0 14px",
-          background: "color-mix(in srgb, var(--term-bg) 70%, transparent)",
+          gap: 20,
+          padding: "0 16px",
+          background: "color-mix(in srgb, var(--term-bg) 78%, transparent)",
           borderTop: "1px solid var(--term-dim)",
           opacity: t,
           pointerEvents: "none",
@@ -221,11 +236,13 @@ function Key({
   title,
   onClick,
   on,
+  big,
 }: {
   label: string;
   title: string;
   onClick: () => void;
   on?: boolean;
+  big?: boolean;
 }) {
   return (
     <button
@@ -234,13 +251,19 @@ function Key({
       aria-label={title}
       aria-pressed={on}
       style={{
-        ...pixel,
-        fontSize: 7,
-        padding: "5px 6px",
-        borderRadius: 3,
+        height: 30,
+        minWidth: 30,
+        padding: "0 9px",
+        borderRadius: 6,
+        fontFamily: big ? "var(--font-mono)" : '"Press Start 2P", ui-monospace, monospace',
+        fontSize: big ? 15 : 9,
+        letterSpacing: 0.5,
         cursor: "pointer",
+        display: "flex",
+        alignItems: "center",
+        justifyContent: "center",
         color: on ? "var(--term-bg)" : "var(--term-fg)",
-        background: on ? "var(--term-accent)" : "color-mix(in srgb, var(--term-fg) 6%, transparent)",
+        background: on ? "var(--term-accent)" : "color-mix(in srgb, var(--term-fg) 8%, transparent)",
         border: `1px solid ${on ? "var(--term-accent)" : "var(--term-dim)"}`,
       }}
     >
@@ -251,20 +274,20 @@ function Key({
 
 function Hint({ keys, label }: { keys: string; label: string }) {
   return (
-    <span style={{ display: "flex", alignItems: "center", gap: 5 }}>
+    <span style={{ display: "flex", alignItems: "center", gap: 6 }}>
       <span
         style={{
-          ...pixel,
-          fontSize: 6,
+          fontFamily: '"Press Start 2P", ui-monospace, monospace',
+          fontSize: 8,
           color: "var(--term-fg)",
           border: "1px solid var(--term-dim)",
-          borderRadius: 2,
-          padding: "3px 4px",
+          borderRadius: 3,
+          padding: "4px 5px",
         }}
       >
         {keys}
       </span>
-      <span style={{ fontSize: 9, color: "var(--term-dim)" }}>{label}</span>
+      <span style={{ fontSize: 11, color: "var(--term-dim)", letterSpacing: 0.5 }}>{label}</span>
     </span>
   );
 }
