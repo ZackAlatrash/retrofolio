@@ -233,17 +233,8 @@ export function TitleLibrary() {
           background: "#080b12",
         }}
       >
-        {/* room ambience behind the station */}
-        <div
-          aria-hidden="true"
-          style={{
-            position: "absolute",
-            inset: 0,
-            opacity: stationOpacity,
-            background:
-              "radial-gradient(90% 65% at 50% 30%, rgba(122,162,247,0.08), transparent 60%), radial-gradient(120% 100% at 50% 100%, rgba(0,0,0,0.55), transparent 55%)",
-          }}
-        />
+        {/* the room behind the station */}
+        <Room opacity={stationOpacity} />
 
         {/* phase 1: the video */}
         <canvas
@@ -550,6 +541,90 @@ export function TitleLibrary() {
     </div>
   );
 }
+
+/** Wall, floor, glow pool and drifting dust behind the station. */
+function Room({ opacity }: { opacity: number }) {
+  return (
+    <div aria-hidden="true" style={{ position: "absolute", inset: 0, opacity }}>
+      {/* wall */}
+      <div
+        style={{
+          position: "absolute",
+          inset: "0 0 26% 0",
+          background:
+            "linear-gradient(180deg, #0a0d17 0%, #10131f 78%, #131628 100%)",
+        }}
+      />
+      {/* wall glow from the TV */}
+      <div
+        style={{
+          position: "absolute",
+          inset: "0 0 26% 0",
+          background:
+            "radial-gradient(58% 70% at 50% 42%, rgba(122,162,247,0.11), transparent 68%)",
+        }}
+      />
+      {/* floor */}
+      <div
+        style={{
+          position: "absolute",
+          inset: "74% 0 0 0",
+          background:
+            "linear-gradient(180deg, #161a2c 0%, #0b0d18 34%, #060810 100%)",
+          borderTop: "1px solid rgba(122,162,247,0.14)",
+        }}
+      />
+      {/* glow pool on the floor under the station */}
+      <div
+        style={{
+          position: "absolute",
+          left: "18%",
+          right: "18%",
+          top: "72%",
+          height: "16%",
+          background:
+            "radial-gradient(50% 55% at 50% 30%, rgba(122,162,247,0.13), transparent 72%)",
+        }}
+      />
+      {/* corner vignette */}
+      <div
+        style={{
+          position: "absolute",
+          inset: 0,
+          background:
+            "radial-gradient(120% 95% at 50% 42%, transparent 55%, rgba(0,0,0,0.6) 100%)",
+        }}
+      />
+      {/* dust motes in the phosphor light */}
+      {opacity > 0.15 &&
+        DUST.map((d, i) => (
+          <span
+            key={i}
+            className="dust"
+            style={{
+              left: d.left,
+              top: d.top,
+              animationDelay: d.delay,
+              animationDuration: d.dur,
+              width: d.size,
+              height: d.size,
+            }}
+          />
+        ))}
+    </div>
+  );
+}
+
+const DUST = [
+  { left: "24%", top: "38%", delay: "0s", dur: "11s", size: 3 },
+  { left: "31%", top: "62%", delay: "2.2s", dur: "13s", size: 2 },
+  { left: "42%", top: "30%", delay: "4.5s", dur: "10s", size: 2 },
+  { left: "55%", top: "56%", delay: "1.1s", dur: "12s", size: 3 },
+  { left: "63%", top: "34%", delay: "3.4s", dur: "14s", size: 2 },
+  { left: "71%", top: "58%", delay: "5.6s", dur: "11s", size: 3 },
+  { left: "78%", top: "42%", delay: "0.7s", dur: "13s", size: 2 },
+  { left: "36%", top: "48%", delay: "6.8s", dur: "12s", size: 2 },
+];
 
 /** Title/genre/stat overlay on the station screen. */
 function ScreenChrome({ entry, show }: { entry: (typeof showcase)[number]; show: number }) {

@@ -105,6 +105,36 @@ body {
   }
 }
 
+.dust {
+  position: absolute;
+  border-radius: 50%;
+  background: rgba(160, 190, 255, 0.35);
+  box-shadow: 0 0 6px rgba(122, 162, 247, 0.45);
+  animation: dustFloat 12s linear infinite;
+}
+@keyframes dustFloat {
+  0% {
+    transform: translateY(9vh) translateX(0);
+    opacity: 0;
+  }
+  14% {
+    opacity: 0.65;
+  }
+  62% {
+    opacity: 0.3;
+  }
+  100% {
+    transform: translateY(-24vh) translateX(16px);
+    opacity: 0;
+  }
+}
+@media (prefers-reduced-motion: reduce) {
+  .dust {
+    animation: none;
+    opacity: 0;
+  }
+}
+
 .rack-grid {
   display: grid;
   grid-template-columns: repeat(7, 1fr);

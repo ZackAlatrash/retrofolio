@@ -201,28 +201,6 @@ export function GameNav({ reveal, morph, active }: GameNavProps) {
         );
       })}
 
-      {/* control hints */}
-      <div
-        style={{
-          position: "absolute",
-          bottom: 0,
-          left: 0,
-          right: 0,
-          height: 30,
-          display: "flex",
-          alignItems: "center",
-          gap: 20,
-          padding: "0 16px",
-          background: "color-mix(in srgb, var(--term-bg) 78%, transparent)",
-          borderTop: "1px solid var(--term-dim)",
-          opacity: t,
-          pointerEvents: "none",
-        }}
-      >
-        <Hint keys="◄ ►" label="NAVIGATE" />
-        <Hint keys="⏎" label="SELECT" />
-        <Hint keys="?" label="ASK" />
-      </div>
     </div>
   );
 }
@@ -272,22 +250,3 @@ function Key({
   );
 }
 
-function Hint({ keys, label }: { keys: string; label: string }) {
-  return (
-    <span style={{ display: "flex", alignItems: "center", gap: 6 }}>
-      <span
-        style={{
-          fontFamily: '"Press Start 2P", ui-monospace, monospace',
-          fontSize: 8,
-          color: "var(--term-fg)",
-          border: "1px solid var(--term-dim)",
-          borderRadius: 3,
-          padding: "4px 5px",
-        }}
-      >
-        {keys}
-      </span>
-      <span style={{ fontSize: 11, color: "var(--term-dim)", letterSpacing: 0.5 }}>{label}</span>
-    </span>
-  );
-}
