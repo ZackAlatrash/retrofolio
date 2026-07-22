@@ -27,14 +27,17 @@ const PIXEL = `"Press Start 2P", ui-monospace, monospace`;
 export function TitleScreen() {
   const { lang } = useSettings();
   const prefersReduced = useReducedMotion();
-  const forceMotion =
-    typeof window !== "undefined" &&
-    new URLSearchParams(window.location.search).has("motion");
+  const params =
+    typeof window !== "undefined"
+      ? new URLSearchParams(window.location.search)
+      : new URLSearchParams();
+  const forceMotion = params.has("motion");
+  const forcedP = params.get("p"); // debug: force scrub progress
   const reduced = prefersReduced && !forceMotion;
   const scrub = !reduced;
 
   const { containerRef, canvasRef, progress } = useHeroScrub(scrub);
-  const p = reduced ? 1 : progress;
+  const p = forcedP != null ? parseFloat(forcedP) : reduced ? 1 : progress;
 
   // The opening frame is just a code vortex, so cue the scroll after a beat.
   const [armed, setArmed] = useState(false);

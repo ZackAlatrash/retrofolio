@@ -62,11 +62,11 @@ export function GameNav({ reveal, morph, active }: GameNavProps) {
   const n = ITEMS.length;
   const mid = (n - 1) / 2;
   const cx = W / 2;
-  const heroGap = clamp((W - 120) / (n - 1), 130, 220);
-  const barGap = clamp((W - 560) / (n - 1), 118, 172);
-  const gap = lerp(heroGap, barGap, t);
+  // One compact, centered gap for both states, so the title menu is a tight
+  // cluster (not a full-width bar) and rises straight up into the HUD.
+  const gap = clamp((W - 560) / (n - 1), 100, 158);
   const y = lerp(H * 0.66, BAR_H / 2, t);
-  const scale = lerp(1.5, 0.95, t);
+  const scale = lerp(1.05, 0.9, t);
   const chromeOn = t > 0.5;
 
   return (
