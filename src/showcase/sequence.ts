@@ -8,7 +8,7 @@
  *          before the section unpins and scrolls away.
  */
 export const SCRUB_VH = 220;
-export const PULL_VH = 90;
+export const PULL_VH = 130;
 export const REST_VH = 70;
 
 export const SCROLLABLE_VH = SCRUB_VH + PULL_VH + REST_VH;

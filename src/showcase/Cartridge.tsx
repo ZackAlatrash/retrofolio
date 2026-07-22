@@ -31,6 +31,7 @@ export function Cartridge({ entry, selected, onSelect, onOpen }: CartridgeProps)
       aria-label={`${project.name}: ${entry.genre}`}
       style={{
         position: "relative",
+        width: "100%",
         background: "transparent",
         border: "none",
         padding: 0,

@@ -28,14 +28,9 @@ import {
 
 const PIXEL = '"Press Start 2P", ui-monospace, monospace';
 
-// --- the ONE television (pixel art, public/game/tv.webp, 1100x896 = 734x598 src) ---
+// --- the pixel television (public/game/tv.webp, 734x598 source) ---
 const TV_AR = 598 / 734; // height / width
-// glass rect within the TV image (measured)
 const GLASS = { left: 8.72, top: 10.2, width: 82.15, height: 75.08 };
-// the TV rect within the original hero video frame (for the station lerp)
-const TV_IN_VIDEO = { x: 123, y: 6, w: 1130, h: 756 };
-const VIDEO_W = 1376;
-const VIDEO_H = 768;
 
 const TAGLINE = {
   en: "Grounded AI, shipped to production.",
@@ -49,8 +44,6 @@ const SUBTITLE = {
   en: "every cartridge is a real project I built and shipped",
   nl: "elke cartridge is een echt project dat ik heb gebouwd en opgeleverd",
 };
-
-const lerp = (a: number, b: number, t: number) => a + (b - a) * t;
 
 function useViewport() {
   const [size, setSize] = useState(() => ({
@@ -66,11 +59,15 @@ function useViewport() {
 }
 
 /**
- * The fused Title -> Game Library sequence, shot as one continuous take on a
- * single television. During the scrub the camera is nose-up against the glass
- * (the TV is scaled so its screen covers the viewport) and the hero video's
- * content plays inside it; the pull-back shrinks the very same TV into the
- * game room, where it becomes the library preview screen.
+ * The fused Title -> Game Library sequence with a full CRT power-cycle
+ * transition (option A):
+ *   scrub - the approved full-screen hero video, untouched
+ *   pull  - the picture dies like a real CRT (vertical collapse into a blazing
+ *           scanline -> the line shrinks to a dot -> phosphor ember), the room
+ *           emerges in darkness with the TV on standby, then the room TV powers
+ *           ON (dot -> line -> the picture opens, flash, a breath of static)
+ *           into the library boot card while the station settles in
+ *   rest  - the station holds for browsing
  */
 export function TitleLibrary() {
   const { lang } = useSettings();
@@ -113,7 +110,7 @@ export function TitleLibrary() {
     imagesRef.current = imgs;
   }, [reduced]);
 
-  // Scroll -> progress + imperative canvas draw (source-cropped video content).
+  // Scroll -> progress + imperative full-frame canvas draw (the approved hero).
   useEffect(() => {
     if (reduced) return;
     const canvas = canvasRef.current;
@@ -191,26 +188,42 @@ export function TitleLibrary() {
   if (reduced) return <ReducedTitleLibrary lang={lang} />;
 
   const scrubP = clamp01(p / S1);
-  const pullT = smooth(p, S1, S2);
+  // Raw pull progress 0..1 drives the power-cycle phases.
+  const t = clamp01((p - S1) / (S2 - S1));
 
-  // --- TV geometry: from the video's TV rect down to the station rect. ---
-  const cover = Math.max(W / VIDEO_W, H / VIDEO_H);
-  const oy = (H - VIDEO_H * cover) / 2;
-  const startW = TV_IN_VIDEO.w * cover;
-  const startTop = oy + TV_IN_VIDEO.y * cover;
+  // ---- the CRT death (on the full-screen picture) ----
+  const collapse = smooth(t, 0, 0.2); // vertical squeeze into a line
+  const lineP = smooth(t, 0.2, 0.3); // the line shrinks to a dot
+  const dotFade = smooth(t, 0.3, 0.36); // the dot dies
+  const ember = smooth(t, 0.32, 0.38) * (1 - smooth(t, 0.42, 0.52));
+  const jitter = Math.sin(t * 140) * 4 * collapse * (1 - collapse);
+
+  // ---- the room + station emerge in darkness ----
+  const roomIn = smooth(t, 0.3, 0.55);
+  const roomLit = 0.55 + 0.45 * smooth(t, 0.6, 0.8); // brightens on power-on
+  const stationIn = smooth(t, 0.4, 0.6);
+
+  // ---- the room TV powers ON ----
+  const onDot = smooth(t, 0.46, 0.52);
+  const onLine = smooth(t, 0.52, 0.6);
+  const onOpen = smooth(t, 0.6, 0.7);
+  const flash = smooth(t, 0.68, 0.72) * (1 - smooth(t, 0.72, 0.8));
+  const burst = smooth(t, 0.7, 0.74) * (1 - smooth(t, 0.76, 0.85));
+  const bootIn = smooth(t, 0.78, 0.9);
+
+  const titleOpacity = 1 - smooth(t, 0, 0.09);
+
+  // ---- station geometry (fixed; it does not fly) ----
   const endTop = Math.max(40, 0.05 * H);
   const endW = Math.min(0.56 * W, Math.max(320, (H - endTop - 14) / 1.44));
-  const tvW = lerp(startW, endW, pullT);
+  const tvW = endW;
   const tvH = tvW * TV_AR;
-  const tvTop = lerp(startTop, endTop, pullT);
+  const tvTop = endTop;
   const cabW = Math.min(tvW * 1.5, W * 0.96);
   const cabTop = tvTop + tvH - 8;
+  const stationRise = (1 - stationIn) * 26;
 
-  const titleOpacity = 1 - smooth(pullT, 0, 0.22);
-  const stationOpacity = smooth(pullT, 0.04, 0.3);
-  const artIn = smooth(pullT, 0.18, 0.46);
-  const noise =
-    pullT > 0.001 && pullT < 0.3 ? 0.5 - Math.abs(pullT - 0.08) * 2 : 0;
+  const powerPlaneOpacity = onDot * (1 - smooth(t, 0.74, 0.82));
 
   return (
     <div
@@ -236,22 +249,22 @@ export function TitleLibrary() {
           top: 0,
           height: "100vh",
           overflow: "hidden",
-          background: "#080b12",
+          background: "#05070c",
         }}
       >
-        {/* the room behind the station */}
-        <Room opacity={stationOpacity} />
+        {/* the room, emerging in darkness and brightening with the TV */}
+        <Room opacity={roomIn} lit={roomLit} />
 
-        {/* stage label + subtitle, fade in with the station */}
+        {/* stage label + subtitle */}
         <div
-          aria-hidden={stationOpacity < 0.5}
+          aria-hidden={stationIn < 0.5}
           style={{
             position: "absolute",
             top: Math.max(12, endTop - 34),
             left: 0,
             right: 0,
             textAlign: "center",
-            opacity: stationOpacity * smooth(pullT, 0.5, 0.9),
+            opacity: stationIn * smooth(t, 0.62, 0.8),
             zIndex: 4,
           }}
         >
@@ -269,185 +282,160 @@ export function TitleLibrary() {
           </div>
         </div>
 
-        {/* phase 1: the approved full-screen hero video */}
-        <canvas
-          ref={canvasRef}
-          aria-hidden="true"
-          style={{
-            position: "absolute",
-            inset: 0,
-            width: "100%",
-            height: "100%",
-            opacity: pullT < 0.06 ? 1 : Math.max(0, 1 - (pullT - 0.06) * 9),
-          }}
-        />
-
-        {/* ==== the station TV (appears during the pull) ==== */}
+        {/* ==== the station (fixed geometry, settles in during the dark beat) ==== */}
         <div
+          aria-hidden={stationIn < 0.05}
           style={{
-            position: "absolute",
-            left: "50%",
-            top: tvTop,
-            width: tvW,
-            height: tvH,
-            transform: "translateX(-50%)",
-            zIndex: 3,
-            opacity: stationOpacity,
+            opacity: stationIn,
+            transform: `translateY(${stationRise}px)`,
           }}
         >
-          {/* phosphor halo (station phase only) */}
-          <div
-            aria-hidden="true"
-            style={{
-              position: "absolute",
-              inset: "-12% -9%",
-              background:
-                "radial-gradient(60% 58% at 50% 46%, rgba(122,162,247,0.3), transparent 72%)",
-              pointerEvents: "none",
-              opacity: stationOpacity,
-            }}
-          />
-          <img
-            src={tvUrl}
-            alt=""
-            aria-hidden="true"
-            style={{
-              position: "absolute",
-              inset: 0,
-              width: "100%",
-              height: "100%",
-              filter: `drop-shadow(0 ${lerp(6, 24, pullT)}px ${lerp(20, 40, pullT)}px rgba(0,0,0,0.55))`,
-            }}
-          />
-          {/* the glass */}
+          {/* TV */}
           <div
             style={{
               position: "absolute",
-              left: `${GLASS.left}%`,
-              top: `${GLASS.top}%`,
-              width: `${GLASS.width}%`,
-              height: `${GLASS.height}%`,
-              borderRadius: "3.4% / 4.6%",
-              overflow: "hidden",
-              background: "#0d1120",
+              left: "50%",
+              top: tvTop,
+              width: tvW,
+              height: tvH,
+              transform: "translateX(-50%)",
+              zIndex: 3,
             }}
           >
-            {/* library content */}
-            {entry ? (
-              <div key={entry.id} className="crt-flicker" style={{ position: "absolute", inset: 0, opacity: artIn }}>
-                <img
-                  src={labelUrl(entry.id)}
-                  alt=""
+            {/* phosphor halo, only once the screen is on */}
+            <div
+              aria-hidden="true"
+              style={{
+                position: "absolute",
+                inset: "-14% -10%",
+                background:
+                  "radial-gradient(60% 58% at 50% 46%, rgba(122,162,247,0.32), transparent 72%)",
+                pointerEvents: "none",
+                opacity: onOpen,
+              }}
+            />
+            <img
+              src={tvUrl}
+              alt=""
+              aria-hidden="true"
+              style={{
+                position: "absolute",
+                inset: 0,
+                width: "100%",
+                height: "100%",
+                filter: "drop-shadow(0 24px 40px rgba(0,0,0,0.55))",
+              }}
+            />
+            {/* standby LED, dies as the screen opens */}
+            <div
+              aria-hidden="true"
+              style={{
+                position: "absolute",
+                right: "10.5%",
+                bottom: "6.5%",
+                width: Math.max(4, tvW * 0.011),
+                height: Math.max(4, tvW * 0.011),
+                borderRadius: "50%",
+                background: "#e2574f",
+                boxShadow: "0 0 8px #e2574f, 0 0 14px rgba(226,87,79,0.6)",
+                opacity: stationIn * (1 - onOpen),
+              }}
+            />
+            {/* the glass */}
+            <div
+              style={{
+                position: "absolute",
+                left: `${GLASS.left}%`,
+                top: `${GLASS.top}%`,
+                width: `${GLASS.width}%`,
+                height: `${GLASS.height}%`,
+                borderRadius: "3.4% / 4.6%",
+                overflow: "hidden",
+                background: "#0a0d18",
+              }}
+            >
+              {/* library content, revealed after the power-on */}
+              {entry ? (
+                <div
+                  key={entry.id}
+                  className="crt-flicker"
+                  style={{ position: "absolute", inset: 0, opacity: bootIn }}
+                >
+                  <img
+                    src={labelUrl(entry.id)}
+                    alt=""
+                    aria-hidden="true"
+                    style={{
+                      position: "absolute",
+                      inset: 0,
+                      width: "100%",
+                      height: "100%",
+                      objectFit: "cover",
+                    }}
+                  />
+                  <ScreenChrome entry={entry} show={1} />
+                </div>
+              ) : (
+                <BootCard show={bootIn} />
+              )}
+              {/* power-on: dot -> line -> the picture plane opens */}
+              {powerPlaneOpacity > 0.001 && (
+                <div
                   aria-hidden="true"
                   style={{
                     position: "absolute",
                     inset: 0,
-                    width: "100%",
-                    height: "100%",
-                    objectFit: "cover",
+                    display: "flex",
+                    alignItems: "center",
+                    justifyContent: "center",
+                    opacity: powerPlaneOpacity,
+                  }}
+                >
+                  <div
+                    style={{
+                      width: "96%",
+                      height: "94%",
+                      borderRadius: 6,
+                      transform: `scaleX(${0.006 + 0.994 * onLine}) scaleY(${0.006 + 0.994 * onOpen})`,
+                      background:
+                        "radial-gradient(60% 80% at 50% 50%, #eef4ff 0%, #a9c6ff 55%, #5b82d6 100%)",
+                      boxShadow:
+                        "0 0 26px rgba(170,200,255,0.9), 0 0 70px rgba(122,162,247,0.55)",
+                    }}
+                  />
+                </div>
+              )}
+              {/* white flash as the tube catches */}
+              {flash > 0.001 && (
+                <div
+                  aria-hidden="true"
+                  style={{
+                    position: "absolute",
+                    inset: 0,
+                    background: "#fff",
+                    opacity: flash * 0.85,
                   }}
                 />
-                <ScreenChrome entry={entry} show={1} />
-              </div>
-            ) : (
-              <BootCard show={artIn} />
-            )}
-            {/* channel static at the handoff */}
-            {noise > 0 && (
-              <div
-                aria-hidden="true"
-                style={{
-                  position: "absolute",
-                  inset: 0,
-                  opacity: noise,
-                  background:
-                    "repeating-linear-gradient(0deg, rgba(255,255,255,0.22) 0 1px, rgba(10,10,18,0.5) 1px 3px)",
-                  mixBlendMode: "screen",
-                }}
-              />
-            )}
-            <GlassFX />
+              )}
+              {/* a breath of static before the picture settles */}
+              {burst > 0.001 && (
+                <div
+                  aria-hidden="true"
+                  style={{
+                    position: "absolute",
+                    inset: 0,
+                    opacity: burst,
+                    background:
+                      "repeating-linear-gradient(0deg, rgba(255,255,255,0.24) 0 1px, rgba(10,10,18,0.55) 1px 3px)",
+                    mixBlendMode: "screen",
+                  }}
+                />
+              )}
+              <GlassFX />
+            </div>
           </div>
-        </div>
 
-        {/* title overlay (over the glass during the scrub) */}
-        <div
-          style={{
-            position: "absolute",
-            inset: 0,
-            display: "flex",
-            flexDirection: "column",
-            alignItems: "center",
-            justifyContent: "center",
-            textAlign: "center",
-            padding: "0 6vw",
-            pointerEvents: titleOpacity > 0.4 ? "auto" : "none",
-            opacity: titleOpacity,
-            zIndex: 4,
-          }}
-        >
-          <div
-            aria-hidden="true"
-            style={{
-              position: "absolute",
-              inset: 0,
-              background:
-                "radial-gradient(70% 55% at 50% 46%, rgba(8,11,18,0.72), transparent 70%)",
-              opacity: smooth(scrubP, 0.35, 0.62),
-            }}
-          />
-          <div style={{ position: "relative" }}>
-            <h1 style={{ ...titleStyle }}>
-              <DecodeText
-                text="ZACK ALATRASH"
-                progress={scrubP}
-                start={0.4}
-                end={0.62}
-                reduced={false}
-              />
-            </h1>
-            <p style={{ ...taglineStyle, opacity: smooth(scrubP, 0.62, 0.76) }}>
-              {pick(lang, TAGLINE)}
-            </p>
-            <button
-              onClick={() =>
-                document
-                  .getElementById("projects")
-                  ?.scrollIntoView({ behavior: "smooth" })
-              }
-              style={{ ...pressStartStyle, opacity: smooth(scrubP, 0.86, 0.97) }}
-              className={scrubP > 0.9 ? "press-blink" : undefined}
-            >
-              {"▸"} PRESS START
-            </button>
-          </div>
-          <div
-            style={{
-              position: "absolute",
-              bottom: "4vh",
-              left: 0,
-              right: 0,
-              textAlign: "center",
-              opacity: smooth(scrubP, 0.9, 1),
-            }}
-            className="font-mono"
-          >
-            <span style={{ fontSize: 11, color: "var(--term-dim)", letterSpacing: 1 }}>
-              {pick(lang, FOOTER)}
-            </span>
-          </div>
-        </div>
-
-        {/* scroll cue */}
-        {armed && (
-          <div className="scroll-cue" aria-hidden="true" style={{ opacity: p < 0.015 ? 1 : 0, zIndex: 5 }}>
-            <span className="cue-chev">▼</span>
-            <span className="cue-txt">SCROLL TO POWER ON</span>
-          </div>
-        )}
-
-        {/* ==== the cabinet ==== */}
-        <div aria-hidden={pullT < 0.05} style={{ opacity: stationOpacity }}>
+          {/* cabinet */}
           <div
             style={{
               position: "absolute",
@@ -475,6 +463,7 @@ export function TitleLibrary() {
                 background:
                   "radial-gradient(50% 100% at 50% 0%, rgba(122,162,247,0.12), transparent 75%)",
                 pointerEvents: "none",
+                opacity: onOpen,
               }}
             />
             <div
@@ -521,7 +510,7 @@ export function TitleLibrary() {
                 boxShadow: "0 3px 6px rgba(0,0,0,0.4)",
               }}
             />
-            {/* open shelf */}
+            {/* open shelf: the cartridges settle with a slight stagger */}
             <div
               style={{
                 display: "grid",
@@ -530,15 +519,26 @@ export function TitleLibrary() {
                 padding: `14px ${Math.max(14, cabW * 0.03)}px 12px`,
               }}
             >
-              {showcase.map((e) => (
-                <Cartridge
-                  key={e.id}
-                  entry={e}
-                  selected={e.id === selectedId}
-                  onSelect={setSelectedId}
-                  onOpen={setSelectedId}
-                />
-              ))}
+              {showcase.map((e, i) => {
+                const settle = smooth(t, 0.5 + i * 0.02, 0.7 + i * 0.02);
+                return (
+                  <div
+                    key={e.id}
+                    style={{
+                      width: "100%",
+                      opacity: settle,
+                      transform: `translateY(${(1 - settle) * 16}px)`,
+                    }}
+                  >
+                    <Cartridge
+                      entry={e}
+                      selected={e.id === selectedId}
+                      onSelect={setSelectedId}
+                      onOpen={setSelectedId}
+                    />
+                  </div>
+                );
+              })}
             </div>
             <div
               className="font-mono"
@@ -554,6 +554,164 @@ export function TitleLibrary() {
             </div>
           </div>
         </div>
+
+        {/* ==== phase 1: the approved full-screen hero video, dying like a CRT ==== */}
+        <canvas
+          ref={canvasRef}
+          aria-hidden="true"
+          style={{
+            position: "absolute",
+            inset: 0,
+            width: "100%",
+            height: "100%",
+            transformOrigin: "center",
+            transform: `translateX(${jitter}px) scaleX(${1 - lineP * 0.9965}) scaleY(${1 - collapse * 0.9955})`,
+            filter: `brightness(${1 + collapse * 4.5 + lineP * 3}) saturate(${1 - collapse * 0.55})`,
+            opacity: 1 - dotFade,
+            visibility: t < 0.36 ? "visible" : "hidden",
+            zIndex: 5,
+          }}
+        />
+        {/* the blazing scanline */}
+        {collapse > 0.55 && dotFade < 1 && (
+          <div
+            aria-hidden="true"
+            style={{
+              position: "absolute",
+              left: "50%",
+              top: "50%",
+              transform: "translate(-50%, -50%)",
+              width: `${(1 - lineP) * 96 + 0.5}%`,
+              height: 3,
+              borderRadius: 2,
+              background: "#eef4ff",
+              boxShadow:
+                "0 0 10px rgba(238,244,255,0.95), 0 0 30px rgba(170,200,255,0.8), 0 0 70px rgba(122,162,247,0.5)",
+              opacity: smooth(collapse, 0.55, 1) * (1 - dotFade),
+              zIndex: 6,
+            }}
+          />
+        )}
+        {/* the dying dot */}
+        {lineP > 0.85 && (
+          <div
+            aria-hidden="true"
+            style={{
+              position: "absolute",
+              left: "50%",
+              top: "50%",
+              transform: "translate(-50%, -50%)",
+              width: 10,
+              height: 8,
+              borderRadius: "50%",
+              background: "#f4f8ff",
+              boxShadow:
+                "0 0 12px rgba(238,244,255,1), 0 0 34px rgba(170,200,255,0.9), 0 0 80px rgba(122,162,247,0.6)",
+              opacity: smooth(lineP, 0.85, 1) * (1 - dotFade),
+              zIndex: 6,
+            }}
+          />
+        )}
+        {/* phosphor afterglow ember */}
+        {ember > 0.001 && (
+          <div
+            aria-hidden="true"
+            style={{
+              position: "absolute",
+              left: "50%",
+              top: "50%",
+              transform: "translate(-50%, -50%)",
+              width: 5,
+              height: 4,
+              borderRadius: "50%",
+              background: "#b8e394",
+              filter: "blur(0.5px)",
+              boxShadow: "0 0 10px rgba(158,206,106,0.8)",
+              opacity: ember * 0.9,
+              zIndex: 6,
+            }}
+          />
+        )}
+
+        {/* title overlay */}
+        <div
+          style={{
+            position: "absolute",
+            inset: 0,
+            display: "flex",
+            flexDirection: "column",
+            alignItems: "center",
+            justifyContent: "center",
+            textAlign: "center",
+            padding: "0 6vw",
+            pointerEvents: titleOpacity > 0.4 ? "auto" : "none",
+            opacity: titleOpacity,
+            zIndex: 7,
+          }}
+        >
+          <div
+            aria-hidden="true"
+            style={{
+              position: "absolute",
+              inset: 0,
+              background:
+                "radial-gradient(70% 55% at 50% 46%, rgba(8,11,18,0.72), transparent 70%)",
+              opacity: smooth(scrubP, 0.35, 0.62) * titleOpacity,
+            }}
+          />
+          <div style={{ position: "relative" }}>
+            <h1 style={{ ...titleStyle }}>
+              <DecodeText
+                text="ZACK ALATRASH"
+                progress={scrubP}
+                start={0.4}
+                end={0.62}
+                reduced={false}
+              />
+            </h1>
+            <p style={{ ...taglineStyle, opacity: smooth(scrubP, 0.62, 0.76) }}>
+              {pick(lang, TAGLINE)}
+            </p>
+            <button
+              onClick={() =>
+                document
+                  .getElementById("projects")
+                  ?.scrollIntoView({ behavior: "smooth" })
+              }
+              style={{ ...pressStartStyle, opacity: smooth(scrubP, 0.86, 0.97) }}
+              className={scrubP > 0.9 ? "press-blink" : undefined}
+            >
+              {"▸"} PRESS START
+            </button>
+          </div>
+          <div
+            style={{
+              position: "absolute",
+              bottom: "4vh",
+              left: 0,
+              right: 0,
+              textAlign: "center",
+              opacity: smooth(scrubP, 0.9, 1),
+            }}
+            className="font-mono"
+          >
+            <span style={{ fontSize: 11, color: "var(--term-dim)", letterSpacing: 1 }}>
+              {pick(lang, FOOTER)}
+            </span>
+          </div>
+        </div>
+
+        {/* scroll cue */}
+        {armed && (
+          <div
+            className="scroll-cue"
+            aria-hidden="true"
+            style={{ opacity: p < 0.015 ? 1 : 0, zIndex: 8 }}
+          >
+            <span className="cue-chev">▼</span>
+            <span className="cue-txt">SCROLL TO POWER ON</span>
+          </div>
+        )}
       </div>
     </div>
   );
@@ -642,8 +800,8 @@ function BootCard({ show }: { show: number }) {
   );
 }
 
-/** Wall, floor, glow pool and drifting dust behind the station. */
-function Room({ opacity }: { opacity: number }) {
+/** The generated game room; `lit` brightens it as the TV powers on. */
+function Room({ opacity, lit }: { opacity: number; lit: number }) {
   return (
     <div aria-hidden="true" style={{ position: "absolute", inset: 0, opacity }}>
       <img
@@ -655,7 +813,7 @@ function Room({ opacity }: { opacity: number }) {
           width: "100%",
           height: "100%",
           objectFit: "cover",
-          filter: "brightness(0.82) saturate(0.92)",
+          filter: `brightness(${(0.82 * lit).toFixed(3)}) saturate(0.92)`,
         }}
       />
       <div
