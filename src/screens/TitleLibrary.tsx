@@ -19,6 +19,7 @@ import {
   labelUrl,
   crtUrl,
   consoleUrl,
+  roomUrl,
 } from "../showcase/showcaseData";
 import {
   CONTAINER_VH,
@@ -546,44 +547,26 @@ export function TitleLibrary() {
 function Room({ opacity }: { opacity: number }) {
   return (
     <div aria-hidden="true" style={{ position: "absolute", inset: 0, opacity }}>
-      {/* wall */}
-      <div
+      {/* the generated game room */}
+      <img
+        src={roomUrl}
+        alt=""
         style={{
           position: "absolute",
-          inset: "0 0 26% 0",
-          background:
-            "linear-gradient(180deg, #0a0d17 0%, #10131f 78%, #131628 100%)",
+          inset: 0,
+          width: "100%",
+          height: "100%",
+          objectFit: "cover",
+          filter: "brightness(0.82) saturate(0.92)",
         }}
       />
-      {/* wall glow from the TV */}
+      {/* gentle darkening so the room never competes with the station */}
       <div
         style={{
           position: "absolute",
-          inset: "0 0 26% 0",
+          inset: 0,
           background:
-            "radial-gradient(58% 70% at 50% 42%, rgba(122,162,247,0.11), transparent 68%)",
-        }}
-      />
-      {/* floor */}
-      <div
-        style={{
-          position: "absolute",
-          inset: "74% 0 0 0",
-          background:
-            "linear-gradient(180deg, #161a2c 0%, #0b0d18 34%, #060810 100%)",
-          borderTop: "1px solid rgba(122,162,247,0.14)",
-        }}
-      />
-      {/* glow pool on the floor under the station */}
-      <div
-        style={{
-          position: "absolute",
-          left: "18%",
-          right: "18%",
-          top: "72%",
-          height: "16%",
-          background:
-            "radial-gradient(50% 55% at 50% 30%, rgba(122,162,247,0.13), transparent 72%)",
+            "radial-gradient(70% 62% at 50% 44%, rgba(6,8,14,0.28), rgba(6,8,14,0.55) 100%)",
         }}
       />
       {/* corner vignette */}

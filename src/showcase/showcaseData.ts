@@ -37,6 +37,7 @@ export const shellUrl = (c: ShellColor) => `${base}game/cartridges/${c}.webp`;
 export const labelUrl = (id: string) => `${base}game/labels/${id}.webp`;
 export const crtUrl = `${base}game/crt.webp`;
 export const consoleUrl = `${base}game/console.webp`;
+export const roomUrl = `${base}game/room.webp`;
 
 /** Status dot colour for the shelf. */
 export function statusColor(project: Project): string {
