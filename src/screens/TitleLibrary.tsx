@@ -32,13 +32,10 @@ const PIXEL = '"Press Start 2P", ui-monospace, monospace';
 const TV_AR = 598 / 734; // height / width
 // glass rect within the TV image (measured)
 const GLASS = { left: 8.72, top: 10.2, width: 82.15, height: 75.08 };
-// glass centre line as a fraction of TV height (for phase-1 centering)
-const GLASS_CY = (GLASS.top + GLASS.height / 2) / 100;
-// where the old TV's glass sits within the hero video frames (fractions)
-const SRC = { x: 0.1296, y: 0.0612, w: 0.7406, h: 0.8605 };
-// fixed internal canvas resolution matching the glass aspect (603x449)
-const CANVAS_W = 1074;
-const CANVAS_H = 800;
+// the TV rect within the original hero video frame (for the station lerp)
+const TV_IN_VIDEO = { x: 123, y: 6, w: 1130, h: 756 };
+const VIDEO_W = 1376;
+const VIDEO_H = 768;
 
 const TAGLINE = {
   en: "Grounded AI, shipped to production.",
@@ -124,8 +121,7 @@ export function TitleLibrary() {
     if (!canvas || !container) return;
     const ctx = canvas.getContext("2d");
     if (!ctx) return;
-    canvas.width = CANVAS_W;
-    canvas.height = CANVAS_H;
+    const dpr = Math.min(window.devicePixelRatio || 1, 2);
     let raf = 0;
 
     const progress = () => {
@@ -149,22 +145,24 @@ export function TitleLibrary() {
 
     const draw = () => {
       const pr = progress();
-      if (smooth(pr, S1, S2) > 0.55) return; // art has taken over
       const scrub = clamp01(pr / S1);
       const idx = Math.round(scrub * (FRAME_COUNT - 1));
       const img = pickImage(idx);
-      ctx.clearRect(0, 0, CANVAS_W, CANVAS_H);
+      const cw = canvas.width;
+      const ch = canvas.height;
+      ctx.clearRect(0, 0, cw, ch);
       if (!img) return;
-      // source crop: the old TV's glass region within the video frame
-      const sx = SRC.x * img.naturalWidth;
-      const sy = SRC.y * img.naturalHeight;
-      const sw = SRC.w * img.naturalWidth;
-      const sh = SRC.h * img.naturalHeight;
-      // cover-fit the crop into the canvas
-      const scale = Math.max(CANVAS_W / sw, CANVAS_H / sh);
-      const dw = sw * scale;
-      const dh = sh * scale;
-      ctx.drawImage(img, sx, sy, sw, sh, (CANVAS_W - dw) / 2, (CANVAS_H - dh) / 2, dw, dh);
+      const scale = Math.max(cw / img.naturalWidth, ch / img.naturalHeight);
+      const w = img.naturalWidth * scale;
+      const h = img.naturalHeight * scale;
+      ctx.drawImage(img, (cw - w) / 2, (ch - h) / 2, w, h);
+    };
+
+    const resize = () => {
+      const r = canvas.getBoundingClientRect();
+      canvas.width = Math.round(r.width * dpr);
+      canvas.height = Math.round(r.height * dpr);
+      draw();
     };
 
     const onScroll = () => {
@@ -176,14 +174,15 @@ export function TitleLibrary() {
       });
     };
 
+    resize();
     onScroll();
     window.addEventListener("scroll", onScroll, { passive: true });
-    window.addEventListener("resize", onScroll);
+    window.addEventListener("resize", resize);
     const warm = window.setInterval(draw, 150);
     window.setTimeout(() => window.clearInterval(warm), 5000);
     return () => {
       window.removeEventListener("scroll", onScroll);
-      window.removeEventListener("resize", onScroll);
+      window.removeEventListener("resize", resize);
       cancelAnimationFrame(raf);
       window.clearInterval(warm);
     };
@@ -194,19 +193,16 @@ export function TitleLibrary() {
   const scrubP = clamp01(p / S1);
   const pullT = smooth(p, S1, S2);
 
-  // --- ONE TV: nose-up against the glass -> sitting on the cabinet. ---
-  // Phase 1: size the TV so its glass covers the viewport.
-  const tvW1 = Math.max(W / (GLASS.width / 100), (H / (GLASS.height / 100)) / TV_AR);
-  const tvH1 = tvW1 * TV_AR;
-  const top1 = H / 2 - GLASS_CY * tvH1;
-  // Phase 2: the station TV.
-  // Fit the WHOLE station (TV + cabinet) in the viewport: total height is
-  // roughly 1.44x the TV width (TV 0.81 + cabinet 0.63).
+  // --- TV geometry: from the video's TV rect down to the station rect. ---
+  const cover = Math.max(W / VIDEO_W, H / VIDEO_H);
+  const oy = (H - VIDEO_H * cover) / 2;
+  const startW = TV_IN_VIDEO.w * cover;
+  const startTop = oy + TV_IN_VIDEO.y * cover;
   const endTop = Math.max(40, 0.05 * H);
   const endW = Math.min(0.56 * W, Math.max(320, (H - endTop - 14) / 1.44));
-  const tvW = lerp(tvW1, endW, pullT);
+  const tvW = lerp(startW, endW, pullT);
   const tvH = tvW * TV_AR;
-  const tvTop = lerp(top1, endTop, pullT);
+  const tvTop = lerp(startTop, endTop, pullT);
   const cabW = Math.min(tvW * 1.5, W * 0.96);
   const cabTop = tvTop + tvH - 8;
 
@@ -273,7 +269,20 @@ export function TitleLibrary() {
           </div>
         </div>
 
-        {/* ==== THE television (persistent across both phases) ==== */}
+        {/* phase 1: the approved full-screen hero video */}
+        <canvas
+          ref={canvasRef}
+          aria-hidden="true"
+          style={{
+            position: "absolute",
+            inset: 0,
+            width: "100%",
+            height: "100%",
+            opacity: pullT < 0.06 ? 1 : Math.max(0, 1 - (pullT - 0.06) * 9),
+          }}
+        />
+
+        {/* ==== the station TV (appears during the pull) ==== */}
         <div
           style={{
             position: "absolute",
@@ -283,6 +292,7 @@ export function TitleLibrary() {
             height: tvH,
             transform: "translateX(-50%)",
             zIndex: 3,
+            opacity: stationOpacity,
           }}
         >
           {/* phosphor halo (station phase only) */}
@@ -322,18 +332,6 @@ export function TitleLibrary() {
               background: "#0d1120",
             }}
           >
-            {/* the hero video content (source-cropped past the old bezel) */}
-            <canvas
-              ref={canvasRef}
-              aria-hidden="true"
-              style={{
-                position: "absolute",
-                inset: 0,
-                width: "100%",
-                height: "100%",
-                opacity: 1 - artIn,
-              }}
-            />
             {/* library content */}
             {entry ? (
               <div key={entry.id} className="crt-flicker" style={{ position: "absolute", inset: 0, opacity: artIn }}>
