@@ -2,13 +2,23 @@ import { useEffect, useState, type CSSProperties } from "react";
 import { useReducedMotion } from "../motion/useReducedMotion";
 import { useHeroScrub, posterUrl } from "../hero/useHeroScrub";
 import { DecodeText } from "../hero/DecodeText";
+import { useSettings, pick } from "../game/settings";
 
 const MENU = [
-  { label: "START", target: "library" },
-  { label: "ABOUT", target: "about" },
-  { label: "SKILLS", target: "skills" },
-  { label: "CONTACT", target: "contact" },
+  { en: "START", nl: "START", target: "projects" },
+  { en: "ABOUT", nl: "OVER MIJ", target: "about" },
+  { en: "SKILLS", nl: "VAARDIGHEDEN", target: "skills" },
+  { en: "CONTACT", nl: "CONTACT", target: "contact" },
 ];
+
+const TAGLINE = {
+  en: "Grounded AI, shipped to production.",
+  nl: "Gefundeerde AI, in productie gebracht.",
+};
+const FOOTER = {
+  en: "© 2026 · HAARLEM, NL · AVAILABLE SUMMER 2026",
+  nl: "© 2026 · HAARLEM · BESCHIKBAAR VANAF ZOMER 2026",
+};
 
 function smooth(x: number, a: number, b: number) {
   const t = Math.max(0, Math.min(1, (x - a) / (b - a)));
@@ -22,6 +32,7 @@ function scrollToId(id: string) {
 const PIXEL = `"Press Start 2P", ui-monospace, monospace`;
 
 export function TitleScreen() {
+  const { lang } = useSettings();
   const prefersReduced = useReducedMotion();
   const forceMotion =
     typeof window !== "undefined" &&
@@ -87,7 +98,7 @@ export function TitleScreen() {
             opacity: reduced ? 1 : smooth(p, 0.62, 0.76),
           }}
         >
-          Grounded AI, shipped to production.
+          {pick(lang, TAGLINE)}
         </p>
 
         <nav
@@ -102,7 +113,7 @@ export function TitleScreen() {
         >
           {MENU.map((m, i) => (
             <button
-              key={m.label}
+              key={m.target}
               onClick={() => scrollToId(m.target)}
               className="font-mono"
               style={{
@@ -111,13 +122,13 @@ export function TitleScreen() {
                 opacity: reduced ? 1 : smooth(p, 0.78 + i * 0.03, 0.9 + i * 0.03),
               }}
             >
-              {m.label}
+              {pick(lang, m)}
             </button>
           ))}
         </nav>
 
         <button
-          onClick={() => scrollToId("library")}
+          onClick={() => scrollToId("projects")}
           style={{
             ...pressStart,
             opacity: reduced ? 1 : smooth(p, 0.9, 0.99),
@@ -140,7 +151,7 @@ export function TitleScreen() {
         className="font-mono"
       >
         <span style={{ fontSize: 11, color: "var(--term-dim)", letterSpacing: 1 }}>
-          © 2026 · HAARLEM, NL · AVAILABLE SUMMER 2026
+          {pick(lang, FOOTER)}
         </span>
       </div>
     </div>
