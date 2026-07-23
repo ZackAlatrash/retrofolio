@@ -2,6 +2,9 @@ import { useEffect, useRef, useState, type CSSProperties } from "react";
 import { profile } from "../content/profile";
 import { useReducedMotion } from "../motion/useReducedMotion";
 import { tween } from "../showcase/bootFlow";
+import { PixelPortrait } from "./PixelPortrait";
+
+const PORTRAIT = `${import.meta.env.BASE_URL}game/portrait-placeholder.webp`;
 
 /**
  * Screen 2 - PLAYER 01 (About). A senior-engineer character card: the game
@@ -223,71 +226,7 @@ export function AboutScreen() {
             <div className="about-grid" style={{ position: "relative" }}>
               {/* ---- left: portrait + identity ---- */}
               <div style={{ display: "flex", flexDirection: "column", gap: 14, ...enter(120) }}>
-                <div
-                  style={{
-                    position: "relative",
-                    aspectRatio: "1 / 1",
-                    borderRadius: 12,
-                    overflow: "hidden",
-                    border: "1px solid rgba(122,162,247,0.3)",
-                    background: "radial-gradient(90% 80% at 50% 30%, #1c2340 0%, #0c1020 75%)",
-                  }}
-                >
-                  <div
-                    aria-hidden="true"
-                    style={{
-                      position: "absolute",
-                      inset: 0,
-                      display: "flex",
-                      flexDirection: "column",
-                      alignItems: "center",
-                      justifyContent: "center",
-                      gap: 12,
-                    }}
-                  >
-                    <div
-                      style={{
-                        width: 88,
-                        height: 88,
-                        borderRadius: "50%",
-                        background: "linear-gradient(180deg, #2a3358 0%, #171d34 100%)",
-                        border: "3px solid rgba(143,182,255,0.35)",
-                      }}
-                    />
-                    <div
-                      style={{
-                        width: 128,
-                        height: 44,
-                        borderRadius: "60px 60px 0 0",
-                        background: "linear-gradient(180deg, #2a3358 0%, #171d34 100%)",
-                        border: "3px solid rgba(143,182,255,0.35)",
-                        borderBottom: "none",
-                      }}
-                    />
-                  </div>
-                  <div
-                    style={{
-                      position: "absolute",
-                      left: 10,
-                      bottom: 8,
-                      fontFamily: PIXEL,
-                      fontSize: 7,
-                      color: "#6b76a4",
-                    }}
-                  >
-                    ⌗ PORTRAIT ASSET
-                  </div>
-                  <div
-                    aria-hidden="true"
-                    style={{
-                      position: "absolute",
-                      inset: 0,
-                      background:
-                        "repeating-linear-gradient(rgba(0,0,0,0.16) 0 1px, transparent 1px 3px)",
-                      pointerEvents: "none",
-                    }}
-                  />
-                </div>
+                <PixelPortrait src={PORTRAIT} alt="Zack Alatrash" />
 
                 <div>
                   <div
