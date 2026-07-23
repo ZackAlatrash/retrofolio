@@ -42,8 +42,6 @@ const FACTS = [
   { k: "PERMIT", v: "Dutch work permit ✓" },
 ];
 
-const MAX_TILT = 4; // degrees; small so tilting never fights readability
-
 export function AboutScreen() {
   const reduced = useReducedMotion();
   const ref = useRef<HTMLElement>(null);
@@ -69,31 +67,8 @@ export function AboutScreen() {
     return () => io.disconnect();
   }, [reduced]);
 
-  // Holographic tilt only on a hover-capable, fine pointer (never on touch).
-  const [canTilt] = useState(
-    () =>
-      typeof window !== "undefined" &&
-      window.matchMedia("(hover: hover) and (pointer: fine)").matches,
-  );
-  const tilt = canTilt && !reduced;
-  const tiltRef = useRef<HTMLDivElement>(null);
-  const sheenRef = useRef<HTMLDivElement>(null);
-
-  const onMove = (e: React.MouseEvent) => {
-    if (!tilt || !tiltRef.current) return;
-    const r = tiltRef.current.getBoundingClientRect();
-    const px = (e.clientX - r.left) / r.width - 0.5;
-    const py = (e.clientY - r.top) / r.height - 0.5;
-    tiltRef.current.style.transform = `perspective(1200px) rotateY(${px * MAX_TILT * 2}deg) rotateX(${-py * MAX_TILT * 2}deg)`;
-    if (sheenRef.current) {
-      sheenRef.current.style.background = `radial-gradient(circle at ${(px + 0.5) * 100}% ${(py + 0.5) * 100}%, rgba(143,182,255,0.16), transparent 55%)`;
-      sheenRef.current.style.opacity = "1";
-    }
-  };
-  const onLeave = () => {
-    if (tiltRef.current) tiltRef.current.style.transform = "perspective(1200px) rotateX(0deg) rotateY(0deg)";
-    if (sheenRef.current) sheenRef.current.style.opacity = "0";
-  };
+  // Per-section hover accent: sets the --hv custom property the CSS reads.
+  const hv = (c: string) => ({ ["--hv"]: c }) as CSSProperties;
 
   // Staggered entrance: opacity + translateY per block, CSS-transitioned.
   const enter = (delay: number): CSSProperties =>
@@ -186,44 +161,22 @@ export function AboutScreen() {
           </div>
         </div>
 
-        {/* tilt wrapper (separate element so the 3D transform never fights the card entrance) */}
+        {/* the card */}
         <div
-          ref={tiltRef}
-          onMouseMove={onMove}
-          onMouseLeave={onLeave}
-          style={{ transition: "transform 150ms var(--ease-out)", willChange: "transform" }}
+          style={{
+            position: "relative",
+            border: "2px solid rgba(122,162,247,0.35)",
+            borderRadius: 16,
+            background:
+              "linear-gradient(180deg, rgba(20,26,48,0.9) 0%, rgba(11,15,28,0.92) 100%)",
+            boxShadow:
+              "0 30px 80px rgba(0,0,0,0.6), inset 0 1px 0 rgba(255,255,255,0.06), 0 0 60px rgba(122,162,247,0.12)",
+            padding: 20,
+            overflow: "hidden",
+            ...cardEnter,
+          }}
         >
-          {/* the card */}
-          <div
-            style={{
-              position: "relative",
-              border: "2px solid rgba(122,162,247,0.35)",
-              borderRadius: 16,
-              background:
-                "linear-gradient(180deg, rgba(20,26,48,0.9) 0%, rgba(11,15,28,0.92) 100%)",
-              boxShadow:
-                "0 30px 80px rgba(0,0,0,0.6), inset 0 1px 0 rgba(255,255,255,0.06), 0 0 60px rgba(122,162,247,0.12)",
-              padding: 20,
-              overflow: "hidden",
-              ...cardEnter,
-            }}
-          >
-            {/* holographic sheen (follows the cursor, fades on hover) */}
-            <div
-              ref={sheenRef}
-              aria-hidden="true"
-              style={{
-                position: "absolute",
-                inset: 0,
-                opacity: 0,
-                pointerEvents: "none",
-                mixBlendMode: "screen",
-                borderRadius: 16,
-                transition: "opacity 200ms var(--ease-out)",
-              }}
-            />
-
-            <div className="about-grid" style={{ position: "relative" }}>
+          <div className="about-grid" style={{ position: "relative" }}>
               {/* ---- left: portrait + identity ---- */}
               <div style={{ display: "flex", flexDirection: "column", gap: 14, ...enter(120) }}>
                 <PixelPortrait src={PORTRAIT} alt="Zack Alatrash" />
@@ -252,7 +205,9 @@ export function AboutScreen() {
                   {FACTS.map((f) => (
                     <div
                       key={f.k}
+                      className="about-hover"
                       style={{
+                        ...hv("#7aa2f7"),
                         display: "flex",
                         gap: 10,
                         padding: "8px 11px",
@@ -279,7 +234,12 @@ export function AboutScreen() {
                   ))}
                 </div>
 
-                <Panel title="LANGUAGES" accent="var(--term-cite)">
+                <Panel
+                  title="LANGUAGES"
+                  accent="var(--term-cite)"
+                  className="about-hover"
+                  style={hv("var(--term-cite)")}
+                >
                   <div style={{ display: "flex", flexDirection: "column", gap: 12 }}>
                     {LANGUAGES.map((v) => (
                       <div key={v.lang}>
@@ -308,7 +268,12 @@ export function AboutScreen() {
               {/* ---- right: substance ---- */}
               <div style={{ display: "flex", flexDirection: "column", gap: 12 }}>
                 <div style={enter(180)}>
-                  <Panel title="PROFILE" accent="#8fb6ff">
+                  <Panel
+                    title="PROFILE"
+                    accent="#8fb6ff"
+                    className="about-hover"
+                    style={hv("#8fb6ff")}
+                  >
                     <p
                       className="font-mono"
                       style={{ fontSize: 13, lineHeight: 1.78, color: "#d4d9ee", margin: 0 }}
@@ -324,7 +289,9 @@ export function AboutScreen() {
                     <div
                       key={s.label}
                       aria-label={`${s.render(s.to)} ${s.label}`}
+                      className="about-hover about-lift"
                       style={{
+                        ...hv("#9ece6a"),
                         border: "1px solid rgba(122,162,247,0.16)",
                         borderRadius: 10,
                         background: "rgba(16,20,36,0.62)",
@@ -359,7 +326,9 @@ export function AboutScreen() {
                       {profile.pillars.map((tr) => (
                         <div
                           key={tr.title}
+                          className="about-hover about-lift"
                           style={{
+                            ...hv("#8fb6ff"),
                             border: "1px solid rgba(122,162,247,0.14)",
                             borderRadius: 8,
                             padding: "12px 13px",
@@ -395,8 +364,9 @@ export function AboutScreen() {
                       {CERTS.map((t) => (
                         <span
                           key={t}
-                          className="font-mono"
+                          className="font-mono about-hover about-lift"
                           style={{
+                            ...hv("#9ece6a"),
                             fontSize: 10.5,
                             padding: "6px 11px",
                             borderRadius: 6,
@@ -414,7 +384,6 @@ export function AboutScreen() {
               </div>
             </div>
           </div>
-        </div>
       </div>
     </section>
   );
@@ -466,14 +435,17 @@ function Panel({
   accent,
   children,
   style,
+  className,
 }: {
   title: string;
   accent: string;
   children: React.ReactNode;
   style?: CSSProperties;
+  className?: string;
 }) {
   return (
     <div
+      className={className}
       style={{
         border: "1px solid rgba(122,162,247,0.16)",
         borderRadius: 10,

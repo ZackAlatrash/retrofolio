@@ -177,6 +177,35 @@ body {
   }
 }
 
+/* Per-section hover: a section reacts in its own accent (--hv). Tiles also
+   lift; big text panels only glow. Pointer + reduced-motion aware. */
+.about-hover {
+  transition:
+    transform 0.18s var(--ease-out),
+    border-color 0.18s var(--ease-out),
+    box-shadow 0.18s var(--ease-out),
+    background-color 0.18s var(--ease-out);
+}
+@media (hover: hover) and (pointer: fine) {
+  .about-hover:hover {
+    border-color: color-mix(in srgb, var(--hv, #7aa2f7) 55%, transparent) !important;
+    box-shadow:
+      0 8px 22px rgba(0, 0, 0, 0.4),
+      0 0 22px -8px var(--hv, #7aa2f7);
+  }
+  .about-hover.about-lift:hover {
+    transform: translateY(-3px);
+  }
+}
+@media (prefers-reduced-motion: reduce) {
+  .about-hover {
+    transition: none;
+  }
+  .about-hover.about-lift:hover {
+    transform: none;
+  }
+}
+
 @keyframes splashStatic {
   from {
     opacity: 1;
