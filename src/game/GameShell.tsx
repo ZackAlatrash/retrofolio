@@ -1,9 +1,15 @@
 import { TitleLibrary } from "../screens/TitleLibrary";
 import { AboutScreen } from "../screens/AboutScreen";
+import { WorldTravel } from "../screens/WorldTravel";
 import { GameNav } from "./GameNav";
 import { HelpWidget } from "./HelpWidget";
 import { CrtOverlay } from "./CrtOverlay";
 import { useGameRoute } from "./useGameRoute";
+
+const DEMO =
+  typeof window !== "undefined"
+    ? new URLSearchParams(window.location.search).get("demo")
+    : null;
 
 /**
  * The retro-game shell: the fused Title + Game Library sequence (one continuous
@@ -12,6 +18,8 @@ import { useGameRoute } from "./useGameRoute";
  */
 export function GameShell() {
   const { reveal, morph, active } = useGameRoute();
+  // Prototype: the "camera travels one world" direction, rendered solo.
+  if (DEMO === "world") return <WorldTravel />;
   return (
     <>
       <TitleLibrary />
