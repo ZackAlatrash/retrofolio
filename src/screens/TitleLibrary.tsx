@@ -25,6 +25,14 @@ import {
   clamp01,
   smooth,
 } from "../showcase/sequence";
+import { DetailOverlay, SplashCard } from "../showcase/DetailOverlay";
+import {
+  IDLE_FLOW,
+  SLOT,
+  tween,
+  type FlowState,
+} from "../showcase/bootFlow";
+import { shellUrl } from "../showcase/showcaseData";
 
 const PIXEL = '"Press Start 2P", ui-monospace, monospace';
 
@@ -95,6 +103,199 @@ export function TitleLibrary() {
     if (reduced) return;
     const id = window.setTimeout(() => setArmed(true), 900);
     return () => window.clearTimeout(id);
+  }, [reduced]);
+
+  // ---- cartridge boot flow (insert -> splash -> dive -> detail -> eject) ----
+  const [flow, setFlow] = useState<FlowState>(IDLE_FLOW);
+  const visitedRef = useRef<Set<string>>(new Set());
+  const worldRef = useRef<HTMLDivElement>(null);
+  const stageRef = useRef<HTMLDivElement>(null);
+  const flyRef = useRef<HTMLDivElement>(null);
+  const glassRef = useRef<HTMLDivElement>(null);
+  const consoleBoxRef = useRef<HTMLDivElement>(null);
+  const slotGlowRef = useRef<HTMLDivElement>(null);
+  const greenLedRef = useRef<HTMLDivElement>(null);
+  const lastCartRef = useRef<HTMLElement | null>(null);
+  const flowRef = useRef<FlowState>(IDLE_FLOW);
+  flowRef.current = flow;
+  const bootEntry = flow.bootId
+    ? showcase.find((e) => e.id === flow.bootId) ?? null
+    : null;
+
+  const lockScroll = (on: boolean) => {
+    document.documentElement.style.overflow = on ? "hidden" : "";
+  };
+
+  const boot = (id: string) => {
+    if (flowRef.current.phase !== "shelf") return;
+    setSelectedId(id);
+    // Only boot once the station is settled; earlier clicks just preview.
+    const container = containerRef.current;
+    if (container && forcedSeq == null) {
+      const total = container.offsetHeight - window.innerHeight;
+      const top = container.getBoundingClientRect().top;
+      const pr = total > 0 ? clamp01(-top / total) : 0;
+      const tt = clamp01((pr - S1) / (S2 - S1));
+      if (tt < 0.9) return;
+    }
+    const fast = visitedRef.current.has(id);
+    visitedRef.current.add(id);
+    const entryNow = showcase.find((e) => e.id === id);
+    const cartEl = stageRef.current?.querySelector<HTMLElement>(
+      `[data-cart-id="${id}"]`,
+    );
+    const consoleBox = consoleBoxRef.current;
+    const flyLayer = flyRef.current;
+    if (!entryNow || !cartEl || !consoleBox || !flyLayer) {
+      openDetail(id, fast);
+      return;
+    }
+    lastCartRef.current = cartEl;
+    setFlow({ phase: "inserting", bootId: id, fast });
+    history.replaceState(null, "", `#project-${id}/detail`);
+
+    // --- the flight ---
+    const cR = cartEl.getBoundingClientRect();
+    const kR = consoleBox.getBoundingClientRect();
+    const targetW = kR.width * SLOT.width;
+    const targetX = kR.left + kR.width * SLOT.cx - targetW / 2;
+    const targetY = kR.top + kR.height * SLOT.top - targetW * 0.5;
+    const cart = document.createElement("div");
+    cart.style.cssText = `position:fixed;left:${cR.left}px;top:${cR.top}px;width:${cR.width}px;height:${cR.width * (592 / 716)}px;z-index:45;pointer-events:none;will-change:transform;filter:drop-shadow(0 10px 16px rgba(0,0,0,0.6));`;
+    cart.innerHTML =
+      `<img src="${shellUrl(entryNow.shell)}" style="position:absolute;inset:0;width:100%;height:100%;" alt=""/>` +
+      `<img src="${labelUrl(id)}" style="position:absolute;left:16.2%;top:23.7%;width:63.9%;height:46%;object-fit:cover;border-radius:2px;" alt=""/>`;
+    flyLayer.appendChild(cart);
+    cartEl.style.opacity = "0.25";
+
+    const dx = targetX - cR.left;
+    const dy = targetY - cR.top;
+    const scaleEnd = targetW / cR.width;
+    const arcH = Math.min(150, Math.abs(dy) * 0.45 + 50);
+    tween(
+      fast ? 400 : 820,
+      (e) => {
+        const x = dx * e;
+        const y = dy * e - Math.sin(e * Math.PI) * arcH;
+        const sc = 1 + (scaleEnd - 1) * e;
+        const rot = -7 * (1 - e);
+        cart.style.transform = `translate(${x}px, ${y}px) rotate(${rot}deg) scale(${sc})`;
+      },
+      () => {
+        // --- the insertion: slide down into the slot, clipped ---
+        const inner = cart.firstElementChild?.parentElement;
+        tween(
+          fast ? 170 : 300,
+          (e) => {
+            cart.style.transform = `translate(${dx}px, ${dy + e * targetW * 0.34}px) scale(${scaleEnd})`;
+            cart.style.clipPath = `inset(0 0 ${e * 78}% 0)`;
+            void inner;
+          },
+          () => {
+            cart.remove();
+            if (slotGlowRef.current) {
+              const g = slotGlowRef.current;
+              tween(320, (e) => {
+                g.style.opacity = String(e < 0.4 ? e / 0.4 : 1 - (e - 0.4) / 0.6);
+              });
+            }
+            if (greenLedRef.current) greenLedRef.current.style.opacity = "1";
+            setFlow({ phase: "splash", bootId: id, fast });
+            window.setTimeout(() => dive(id, fast), fast ? 420 : 900);
+          },
+        );
+      },
+    );
+  };
+
+  const dive = (id: string, fast: boolean) => {
+    setFlow({ phase: "diving", bootId: id, fast });
+    const world = worldRef.current;
+    const glass = glassRef.current;
+    if (!world || !glass) {
+      openDetail(id, fast);
+      return;
+    }
+    const g = glass.getBoundingClientRect();
+    const cx = g.left + g.width / 2;
+    const cy = g.top + g.height / 2;
+    const scale =
+      Math.max(window.innerWidth / g.width, window.innerHeight / g.height) * 1.04;
+    world.style.transformOrigin = `${cx}px ${cy}px`;
+    world.style.willChange = "transform, opacity";
+    tween(
+      fast ? 460 : 760,
+      (e) => {
+        world.style.transform = `scale(${1 + (scale - 1) * e})`;
+        world.style.opacity = String(1 - Math.max(0, (e - 0.72) / 0.28) * 0.9);
+      },
+      () => openDetail(id, fast),
+    );
+  };
+
+  const openDetail = (id: string, fast: boolean) => {
+    lockScroll(true);
+    setFlow({ phase: "detail", bootId: id, fast });
+  };
+
+  const eject = () => {
+    if (flowRef.current.phase !== "detail") return;
+    const id = flowRef.current.bootId;
+    setFlow({ phase: "ejecting", bootId: id, fast: false });
+    history.replaceState(null, "", "#projects");
+    lockScroll(false);
+    const world = worldRef.current;
+    if (greenLedRef.current) greenLedRef.current.style.opacity = "0";
+    if (!world) {
+      setFlow(IDLE_FLOW);
+      return;
+    }
+    const from = parseFloat((world.style.transform.match(/scale\(([\d.]+)\)/) || [])[1] || "5");
+    tween(
+      520,
+      (e) => {
+        world.style.transform = `scale(${from + (1 - from) * e})`;
+        world.style.opacity = String(0.1 + 0.9 * e);
+      },
+      () => {
+        world.style.transform = "";
+        world.style.opacity = "";
+        world.style.willChange = "";
+        if (lastCartRef.current) {
+          lastCartRef.current.style.opacity = "1";
+          lastCartRef.current.querySelector("button")?.focus();
+        }
+        setFlow(IDLE_FLOW);
+      },
+    );
+  };
+
+  const step = (dir: 1 | -1) => {
+    const id = flowRef.current.bootId;
+    if (!id) return;
+    const idx = showcase.findIndex((e) => e.id === id);
+    const next = showcase[(idx + dir + showcase.length) % showcase.length];
+    visitedRef.current.add(next.id);
+    setSelectedId(next.id);
+    setFlow({ phase: "detail", bootId: next.id, fast: true });
+    history.replaceState(null, "", `#project-${next.id}/detail`);
+  };
+
+  // Deep link: #project-<id>/detail opens the booted detail directly.
+  useEffect(() => {
+    if (reduced) return;
+    const m = window.location.hash.match(/^#project-([a-z0-9-]+)\/detail$/);
+    if (!m) return;
+    const id = m[1];
+    if (!showcase.some((e) => e.id === id)) return;
+    visitedRef.current.add(id);
+    setSelectedId(id);
+    requestAnimationFrame(() => {
+      document.getElementById("projects")?.scrollIntoView();
+      lockScroll(true);
+      setFlow({ phase: "detail", bootId: id, fast: true });
+    });
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [reduced]);
 
   // Preload scrub frames.
@@ -244,6 +445,7 @@ export function TitleLibrary() {
       />
 
       <div
+        ref={stageRef}
         style={{
           position: "sticky",
           top: 0,
@@ -252,6 +454,7 @@ export function TitleLibrary() {
           background: "#05070c",
         }}
       >
+        <div ref={worldRef} style={{ position: "absolute", inset: 0 }}>
         {/* the room, emerging in darkness and brightening with the TV */}
         <Room opacity={roomIn} lit={roomLit} />
 
@@ -343,6 +546,7 @@ export function TitleLibrary() {
             />
             {/* the glass */}
             <div
+              ref={glassRef}
               style={{
                 position: "absolute",
                 left: `${GLASS.left}%`,
@@ -354,8 +558,10 @@ export function TitleLibrary() {
                 background: "#0a0d18",
               }}
             >
-              {/* library content, revealed after the power-on */}
-              {entry ? (
+              {/* a booting cartridge owns the screen */}
+              {flow.phase !== "shelf" && bootEntry ? (
+                <SplashCard entry={bootEntry} />
+              ) : entry ? (
                 <div
                   key={entry.id}
                   className="crt-flicker"
@@ -485,17 +691,56 @@ export function TitleLibrary() {
               }}
             >
               <div aria-hidden="true" style={ventStyle} />
-              <img
-                src={consoleUrl}
-                alt=""
-                aria-hidden="true"
-                style={{
-                  width: "38%",
-                  display: "block",
-                  filter: "drop-shadow(0 14px 18px rgba(0,0,0,0.6))",
-                  marginBottom: -3,
-                }}
-              />
+              <div
+                ref={consoleBoxRef}
+                style={{ position: "relative", width: "38%", marginBottom: -3 }}
+              >
+                <img
+                  src={consoleUrl}
+                  alt=""
+                  aria-hidden="true"
+                  style={{
+                    width: "100%",
+                    display: "block",
+                    filter: "drop-shadow(0 14px 18px rgba(0,0,0,0.6))",
+                  }}
+                />
+                {/* slot glow on insert */}
+                <div
+                  ref={slotGlowRef}
+                  aria-hidden="true"
+                  style={{
+                    position: "absolute",
+                    left: "28%",
+                    top: "9%",
+                    width: "44%",
+                    height: "16%",
+                    borderRadius: 4,
+                    background:
+                      "radial-gradient(60% 100% at 50% 50%, rgba(170,200,255,0.85), transparent 75%)",
+                    opacity: 0,
+                    pointerEvents: "none",
+                  }}
+                />
+                {/* power LED goes green while a cartridge is in */}
+                <div
+                  ref={greenLedRef}
+                  aria-hidden="true"
+                  style={{
+                    position: "absolute",
+                    left: "49.4%",
+                    top: "45%",
+                    width: "2.6%",
+                    aspectRatio: "1",
+                    borderRadius: "50%",
+                    background: "#8fe08a",
+                    boxShadow: "0 0 8px #8fe08a, 0 0 14px rgba(143,224,138,0.6)",
+                    opacity: 0,
+                    transition: "opacity 0.25s ease",
+                    pointerEvents: "none",
+                  }}
+                />
+              </div>
               <div aria-hidden="true" style={ventStyle} />
             </div>
             {/* ledge */}
@@ -524,6 +769,7 @@ export function TitleLibrary() {
                 return (
                   <div
                     key={e.id}
+                    data-cart-id={e.id}
                     style={{
                       width: "100%",
                       opacity: settle,
@@ -534,7 +780,7 @@ export function TitleLibrary() {
                       entry={e}
                       selected={e.id === selectedId}
                       onSelect={setSelectedId}
-                      onOpen={setSelectedId}
+                      onOpen={boot}
                     />
                   </div>
                 );
@@ -712,7 +958,21 @@ export function TitleLibrary() {
             <span className="cue-txt">SCROLL TO POWER ON</span>
           </div>
         )}
+        </div>
+
+        {/* flying cartridges live above the world */}
+        <div ref={flyRef} aria-hidden="true" />
       </div>
+
+      {/* inside the TV: the project detail shell */}
+      {flow.phase === "detail" && bootEntry && (
+        <DetailOverlay
+          entry={bootEntry}
+          onEject={eject}
+          onPrev={() => step(-1)}
+          onNext={() => step(1)}
+        />
+      )}
     </div>
   );
 }
@@ -972,9 +1232,18 @@ function ScreenChrome({
 /** Reduced-motion fallback: static title, then the station as a normal section. */
 function ReducedTitleLibrary({ lang }: { lang: Lang }) {
   const [selectedId, setSelectedId] = useState<string | null>(null);
+  const [detailId, setDetailId] = useState<string | null>(null);
   const entry = selectedId
     ? showcase.find((e) => e.id === selectedId) ?? null
     : null;
+  const detailEntry = detailId
+    ? showcase.find((e) => e.id === detailId) ?? null
+    : null;
+  const stepReduced = (dir: 1 | -1) => {
+    if (!detailId) return;
+    const idx = showcase.findIndex((e) => e.id === detailId);
+    setDetailId(showcase[(idx + dir + showcase.length) % showcase.length].id);
+  };
   return (
     <>
       <section
@@ -1079,10 +1348,21 @@ function ReducedTitleLibrary({ lang }: { lang: Lang }) {
               entry={e}
               selected={e.id === selectedId}
               onSelect={setSelectedId}
-              onOpen={setSelectedId}
+              onOpen={(id) => {
+                setSelectedId(id);
+                setDetailId(id);
+              }}
             />
           ))}
         </div>
+        {detailEntry && (
+          <DetailOverlay
+            entry={detailEntry}
+            onEject={() => setDetailId(null)}
+            onPrev={() => stepReduced(-1)}
+            onNext={() => stepReduced(1)}
+          />
+        )}
       </section>
     </>
   );

@@ -39,6 +39,15 @@ export const tvUrl = `${base}game/tv.webp`;
 export const consoleUrl = `${base}game/console.webp`;
 export const roomUrl = `${base}game/room.webp`;
 
+/** Solid accent hex per shell colour (for the detail screen skin). */
+export const shellHex: Record<ShellColor, string> = {
+  grey: "#9aa0b8",
+  indigo: "#7d8cc9",
+  purple: "#a98fdb",
+  green: "#84b98e",
+  red: "#cf7d7d",
+};
+
 /** Status dot colour for the shelf. */
 export function statusColor(project: Project): string {
   const s = project.status[0];
