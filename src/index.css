@@ -206,6 +206,74 @@ body {
   }
 }
 
+/* ---- About backgrounds (room + synthwave grid) ---- */
+@keyframes aboutDrift {
+  0% {
+    transform: scale(1.06) translate(0, 0);
+  }
+  50% {
+    transform: scale(1.12) translate(-1.4%, -1%);
+  }
+  100% {
+    transform: scale(1.06) translate(0, 0);
+  }
+}
+.about-room-img {
+  animation: aboutDrift 34s ease-in-out infinite;
+}
+@keyframes aboutGlow {
+  0%,
+  100% {
+    opacity: 0.45;
+  }
+  50% {
+    opacity: 0.8;
+  }
+}
+.about-glow {
+  animation: aboutGlow 7s ease-in-out infinite;
+}
+@keyframes aboutGridScroll {
+  from {
+    background-position: 0 0;
+  }
+  to {
+    background-position: 0 44px;
+  }
+}
+.about-synthgrid {
+  background-image:
+    linear-gradient(rgba(122, 162, 247, 0.5) 1px, transparent 1px),
+    linear-gradient(90deg, rgba(187, 154, 247, 0.34) 1px, transparent 1px);
+  background-size: 44px 44px;
+  animation: aboutGridScroll 1.6s linear infinite;
+  -webkit-mask-image: linear-gradient(to top, #000 40%, transparent 94%);
+  mask-image: linear-gradient(to top, #000 40%, transparent 94%);
+}
+@keyframes aboutTwinkle {
+  0%,
+  100% {
+    opacity: 0.25;
+  }
+  50% {
+    opacity: 0.9;
+  }
+}
+.about-star {
+  position: absolute;
+  border-radius: 50%;
+  background: #cfe0ff;
+  animation: aboutTwinkle 4s ease-in-out infinite;
+}
+@media (prefers-reduced-motion: reduce) {
+  .about-room-img,
+  .about-glow,
+  .about-synthgrid,
+  .about-star {
+    animation: none;
+  }
+}
+
 @keyframes splashStatic {
   from {
     opacity: 1;

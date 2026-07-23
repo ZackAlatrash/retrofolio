@@ -3,8 +3,16 @@ import { profile } from "../content/profile";
 import { useReducedMotion } from "../motion/useReducedMotion";
 import { tween } from "../showcase/bootFlow";
 import { PixelPortrait } from "./PixelPortrait";
+import { AboutBackground } from "./AboutBackground";
 
 const PORTRAIT = `${import.meta.env.BASE_URL}game/portrait-placeholder.webp`;
+
+type BgMode = "room" | "grid";
+const INITIAL_BG: BgMode =
+  typeof window !== "undefined" &&
+  new URLSearchParams(window.location.search).get("aboutbg") === "grid"
+    ? "grid"
+    : "room";
 
 /**
  * Screen 2 - PLAYER 01 (About). A senior-engineer character card: the game
@@ -70,6 +78,19 @@ export function AboutScreen() {
   // Per-section hover accent: sets the --hv custom property the CSS reads.
   const hv = (c: string) => ({ ["--hv"]: c }) as CSSProperties;
 
+  // Background comparison toggle (temporary, until Zack picks one).
+  const [bg, setBg] = useState<BgMode>(INITIAL_BG);
+
+  // Subtle pointer parallax on the background (via --apx/--apy on the section).
+  const onParallax = (e: React.MouseEvent) => {
+    if (reduced) return;
+    const el = ref.current;
+    if (!el) return;
+    const r = el.getBoundingClientRect();
+    el.style.setProperty("--apx", String((e.clientX - r.left) / r.width - 0.5));
+    el.style.setProperty("--apy", String((e.clientY - r.top) / r.height - 0.5));
+  };
+
   // Staggered entrance: opacity + translateY per block, CSS-transitioned.
   const enter = (delay: number): CSSProperties =>
     reduced
@@ -93,6 +114,7 @@ export function AboutScreen() {
       id="about"
       aria-label="About"
       ref={ref}
+      onMouseMove={onParallax}
       style={{
         minHeight: "100vh",
         display: "flex",
@@ -100,27 +122,47 @@ export function AboutScreen() {
         justifyContent: "center",
         padding: "84px 20px 56px",
         scrollMarginTop: 52,
-        background:
-          "radial-gradient(120% 90% at 50% 0%, #12162a 0%, #0a0d18 60%, #05070c 100%)",
+        background: "#05070c",
         position: "relative",
         overflow: "hidden",
       }}
     >
-      {/* faint grid floor */}
+      <AboutBackground mode={bg} />
+
+      {/* temporary compare toggle */}
       <div
-        aria-hidden="true"
         style={{
           position: "absolute",
-          inset: 0,
-          backgroundImage:
-            "linear-gradient(rgba(122,162,247,0.05) 1px, transparent 1px), linear-gradient(90deg, rgba(122,162,247,0.05) 1px, transparent 1px)",
-          backgroundSize: "44px 44px",
-          maskImage: "radial-gradient(80% 60% at 50% 42%, #000 30%, transparent 75%)",
-          WebkitMaskImage: "radial-gradient(80% 60% at 50% 42%, #000 30%, transparent 75%)",
+          top: 88,
+          right: 22,
+          zIndex: 6,
+          display: "flex",
+          gap: 6,
+          fontFamily: PIXEL,
+          fontSize: 8,
         }}
-      />
+      >
+        {(["room", "grid"] as BgMode[]).map((m) => (
+          <button
+            key={m}
+            onClick={() => setBg(m)}
+            style={{
+              fontFamily: PIXEL,
+              fontSize: 8,
+              padding: "6px 9px",
+              borderRadius: 6,
+              cursor: "pointer",
+              color: bg === m ? "#0a0d18" : "#8fb6ff",
+              background: bg === m ? "#8fb6ff" : "rgba(10,14,26,0.7)",
+              border: "1px solid rgba(122,162,247,0.4)",
+            }}
+          >
+            {m.toUpperCase()}
+          </button>
+        ))}
+      </div>
 
-      <div style={{ width: "min(1060px, 100%)", position: "relative" }}>
+      <div style={{ width: "min(1060px, 100%)", position: "relative", zIndex: 1 }}>
         {/* level strip */}
         <div
           style={{
