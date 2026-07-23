@@ -28,13 +28,23 @@ import {
 import { DetailOverlay, SplashCard } from "../showcase/DetailOverlay";
 import {
   IDLE_FLOW,
+  SEAT,
   SLOT,
+  easePop,
   tween,
   type FlowState,
 } from "../showcase/bootFlow";
-import { shellUrl } from "../showcase/showcaseData";
+import { shellUrl, type ShowcaseEntry } from "../showcase/showcaseData";
 
 const PIXEL = '"Press Start 2P", ui-monospace, monospace';
+
+/** Cartridge aspect (shell sources are 716x592). */
+const CART_AR = 592 / 716;
+
+/** Shell + label markup shared by the flight clones and the seated cart. */
+const cartMarkup = (e: ShowcaseEntry) =>
+  `<img src="${shellUrl(e.shell)}" style="position:absolute;inset:0;width:100%;height:100%;" alt=""/>` +
+  `<img src="${labelUrl(e.id)}" style="position:absolute;left:16.2%;top:23.7%;width:63.9%;height:46%;object-fit:cover;border-radius:2px;" alt=""/>`;
 
 // --- the pixel television (public/game/tv.webp, 734x598 source) ---
 const TV_AR = 598 / 734; // height / width
@@ -107,6 +117,9 @@ export function TitleLibrary() {
 
   // ---- cartridge boot flow (insert -> splash -> dive -> detail -> eject) ----
   const [flow, setFlow] = useState<FlowState>(IDLE_FLOW);
+  // While a cartridge is in, it stays visibly seated in the console slot.
+  const [seated, setSeated] = useState(false);
+  const seatCloneRef = useRef<HTMLElement | null>(null);
   const visitedRef = useRef<Set<string>>(new Set());
   const worldRef = useRef<HTMLDivElement>(null);
   const stageRef = useRef<HTMLDivElement>(null);
@@ -118,12 +131,50 @@ export function TitleLibrary() {
   const lastCartRef = useRef<HTMLElement | null>(null);
   const flowRef = useRef<FlowState>(IDLE_FLOW);
   flowRef.current = flow;
+  // Phase transitions go through this so the guard ref updates synchronously
+  // (two clicks in one tick must not both pass the shelf check).
+  const applyFlow = (f: FlowState) => {
+    flowRef.current = f;
+    setFlow(f);
+  };
   const bootEntry = flow.bootId
     ? showcase.find((e) => e.id === flow.bootId) ?? null
     : null;
 
   const lockScroll = (on: boolean) => {
     document.documentElement.style.overflow = on ? "hidden" : "";
+  };
+  useEffect(() => () => lockScroll(false), []);
+
+  // Once the seated cart has rendered, the insertion clone can leave.
+  useEffect(() => {
+    if (seated && seatCloneRef.current) {
+      seatCloneRef.current.remove();
+      seatCloneRef.current = null;
+    }
+  }, [seated]);
+
+  const pulseGlow = () => {
+    const g = slotGlowRef.current;
+    if (!g) return;
+    tween(320, (e) => {
+      g.style.opacity = String(e < 0.4 ? e / 0.4 : 1 - (e - 0.4) / 0.6);
+    });
+  };
+
+  // The console gives a little under the press, and back.
+  const nudgeConsole = (px: number) => {
+    const k = consoleBoxRef.current;
+    if (!k) return;
+    tween(
+      150,
+      (e) => {
+        k.style.transform = `translateY(${px * Math.sin(e * Math.PI)}px)`;
+      },
+      () => {
+        k.style.transform = "";
+      },
+    );
   };
 
   const boot = (id: string) => {
@@ -151,25 +202,30 @@ export function TitleLibrary() {
       return;
     }
     lastCartRef.current = cartEl;
-    setFlow({ phase: "inserting", bootId: id, fast });
+    lockScroll(true);
+    applyFlow({ phase: "inserting", bootId: id, fast });
     history.replaceState(null, "", `#project-${id}/detail`);
 
-    // --- the flight ---
+    // --- slot geometry ---
     const cR = cartEl.getBoundingClientRect();
     const kR = consoleBox.getBoundingClientRect();
     const targetW = kR.width * SLOT.width;
-    const targetX = kR.left + kR.width * SLOT.cx - targetW / 2;
-    const targetY = kR.top + kR.height * SLOT.top - targetW * 0.5;
+    const cartH = targetW * CART_AR;
+    const slotX = kR.left + kR.width * (SLOT.cx - SLOT.width / 2);
+    const slotY = kR.top + kR.height * SLOT.top;
+    const hoverY = slotY - cartH - targetW * SEAT.hover;
+    const seatY = slotY - cartH * SEAT.stick;
+
     const cart = document.createElement("div");
-    cart.style.cssText = `position:fixed;left:${cR.left}px;top:${cR.top}px;width:${cR.width}px;height:${cR.width * (592 / 716)}px;z-index:45;pointer-events:none;will-change:transform;filter:drop-shadow(0 10px 16px rgba(0,0,0,0.6));`;
-    cart.innerHTML =
-      `<img src="${shellUrl(entryNow.shell)}" style="position:absolute;inset:0;width:100%;height:100%;" alt=""/>` +
-      `<img src="${labelUrl(id)}" style="position:absolute;left:16.2%;top:23.7%;width:63.9%;height:46%;object-fit:cover;border-radius:2px;" alt=""/>`;
+    cart.style.cssText = `position:fixed;left:${cR.left}px;top:${cR.top}px;width:${cR.width}px;height:${cR.width * CART_AR}px;z-index:45;pointer-events:none;will-change:transform;filter:drop-shadow(0 10px 16px rgba(0,0,0,0.6));`;
+    cart.innerHTML = cartMarkup(entryNow);
     flyLayer.appendChild(cart);
     cartEl.style.opacity = "0.25";
 
-    const dx = targetX - cR.left;
-    const dy = targetY - cR.top;
+    // --- the flight: arc up to hover just above the slot mouth ---
+    // Moves by center so the landing stays exact under center scaling.
+    const dx = slotX + targetW / 2 - (cR.left + cR.width / 2);
+    const dy = hoverY + cartH / 2 - (cR.top + (cR.width * CART_AR) / 2);
     const scaleEnd = targetW / cR.width;
     const arcH = Math.min(150, Math.abs(dy) * 0.45 + 50);
     tween(
@@ -182,25 +238,31 @@ export function TitleLibrary() {
         cart.style.transform = `translate(${x}px, ${y}px) rotate(${rot}deg) scale(${sc})`;
       },
       () => {
-        // --- the insertion: slide down into the slot, clipped ---
-        const inner = cart.firstElementChild?.parentElement;
+        // Rebase onto the hover rect so the insertion runs in clean coordinates.
+        cart.style.transform = "";
+        cart.style.left = `${slotX}px`;
+        cart.style.top = `${hoverY}px`;
+        cart.style.width = `${targetW}px`;
+        cart.style.height = `${cartH}px`;
+        // --- the insertion: push down, clipped exactly at the slot line ---
+        const drop = seatY - hoverY;
         tween(
-          fast ? 170 : 300,
+          fast ? 200 : 360,
           (e) => {
-            cart.style.transform = `translate(${dx}px, ${dy + e * targetW * 0.34}px) scale(${scaleEnd})`;
-            cart.style.clipPath = `inset(0 0 ${e * 78}% 0)`;
-            void inner;
+            const top = hoverY + drop * e;
+            cart.style.transform = `translateY(${drop * e}px)`;
+            const visible = clamp01((slotY - top) / cartH);
+            cart.style.clipPath = `inset(0 0 ${(1 - visible) * 100}% 0)`;
           },
           () => {
-            cart.remove();
-            if (slotGlowRef.current) {
-              const g = slotGlowRef.current;
-              tween(320, (e) => {
-                g.style.opacity = String(e < 0.4 ? e / 0.4 : 1 - (e - 0.4) / 0.6);
-              });
-            }
+            // The cart stays seated in the slot; the React element takes over.
+            seatCloneRef.current?.remove();
+            seatCloneRef.current = cart;
+            setSeated(true);
+            pulseGlow();
+            nudgeConsole(2);
             if (greenLedRef.current) greenLedRef.current.style.opacity = "1";
-            setFlow({ phase: "splash", bootId: id, fast });
+            applyFlow({ phase: "splash", bootId: id, fast });
             window.setTimeout(() => dive(id, fast), fast ? 420 : 900);
           },
         );
@@ -209,7 +271,7 @@ export function TitleLibrary() {
   };
 
   const dive = (id: string, fast: boolean) => {
-    setFlow({ phase: "diving", bootId: id, fast });
+    applyFlow({ phase: "diving", bootId: id, fast });
     const world = worldRef.current;
     const glass = glassRef.current;
     if (!world || !glass) {
@@ -235,19 +297,100 @@ export function TitleLibrary() {
 
   const openDetail = (id: string, fast: boolean) => {
     lockScroll(true);
-    setFlow({ phase: "detail", bootId: id, fast });
+    setSeated(true);
+    applyFlow({ phase: "detail", bootId: id, fast });
+  };
+
+  const finishEject = () => {
+    if (lastCartRef.current) {
+      lastCartRef.current.style.opacity = "1";
+      lastCartRef.current.querySelector("button")?.focus();
+    }
+    lockScroll(false);
+    setSeated(false);
+    applyFlow(IDLE_FLOW);
+  };
+
+  // The cartridge springs up out of the slot, then arcs home to its shelf spot.
+  const popOut = (id: string | null) => {
+    const consoleBox = consoleBoxRef.current;
+    const flyLayer = flyRef.current;
+    const entryNow = id ? showcase.find((e) => e.id === id) : null;
+    const cartEl = id
+      ? stageRef.current?.querySelector<HTMLElement>(`[data-cart-id="${id}"]`)
+      : null;
+    if (!consoleBox || !flyLayer || !entryNow || !cartEl) {
+      finishEject();
+      return;
+    }
+    const kR = consoleBox.getBoundingClientRect();
+    const targetW = kR.width * SLOT.width;
+    const cartH = targetW * CART_AR;
+    const slotX = kR.left + kR.width * (SLOT.cx - SLOT.width / 2);
+    const slotY = kR.top + kR.height * SLOT.top;
+    const hoverY = slotY - cartH - targetW * SEAT.hover;
+    const seatY = slotY - cartH * SEAT.stick;
+
+    // A clone takes over at the exact seated position...
+    const cart = document.createElement("div");
+    cart.style.cssText = `position:fixed;left:${slotX}px;top:${seatY}px;width:${targetW}px;height:${cartH}px;z-index:45;pointer-events:none;will-change:transform;clip-path:inset(0 0 ${(1 - SEAT.stick) * 100}% 0);filter:drop-shadow(0 10px 16px rgba(0,0,0,0.6));`;
+    cart.innerHTML = cartMarkup(entryNow);
+    flyLayer.appendChild(cart);
+    // ...and the seated element + splash screen let go (the TV flicks back
+    // to the library preview, the LED drops back to standby).
+    setSeated(false);
+    applyFlow({ phase: "ejecting", bootId: null, fast: false });
+    if (greenLedRef.current) greenLedRef.current.style.opacity = "0";
+    pulseGlow();
+    nudgeConsole(-1.5);
+
+    // --- the pop: spring up out of the slot, overshoot, settle at hover ---
+    const rise = hoverY - seatY;
+    tween(
+      260,
+      (e) => {
+        const top = seatY + rise * e;
+        cart.style.transform = `translateY(${rise * e}px)`;
+        const visible = clamp01((slotY - top) / cartH);
+        cart.style.clipPath = `inset(0 0 ${(1 - visible) * 100}% 0)`;
+      },
+      () => {
+        // Rebase at the hover rect, then arc home.
+        cart.style.transform = "";
+        cart.style.top = `${hoverY}px`;
+        cart.style.clipPath = "";
+        const cR = cartEl.getBoundingClientRect();
+        const dx = cR.left + cR.width / 2 - (slotX + targetW / 2);
+        const dy = cR.top + (cR.width * CART_AR) / 2 - (hoverY + cartH / 2);
+        const scaleEnd = cR.width / targetW;
+        const arcH = Math.min(120, Math.abs(dy) * 0.35 + 40);
+        tween(
+          460,
+          (e) => {
+            const x = dx * e;
+            const y = dy * e - Math.sin(e * Math.PI) * arcH;
+            const sc = 1 + (scaleEnd - 1) * e;
+            const rot = -6 * Math.sin(e * Math.PI);
+            cart.style.transform = `translate(${x}px, ${y}px) rotate(${rot}deg) scale(${sc})`;
+          },
+          () => {
+            cart.remove();
+            finishEject();
+          },
+        );
+      },
+      easePop,
+    );
   };
 
   const eject = () => {
     if (flowRef.current.phase !== "detail") return;
     const id = flowRef.current.bootId;
-    setFlow({ phase: "ejecting", bootId: id, fast: false });
+    applyFlow({ phase: "ejecting", bootId: id, fast: false });
     history.replaceState(null, "", "#projects");
-    lockScroll(false);
     const world = worldRef.current;
-    if (greenLedRef.current) greenLedRef.current.style.opacity = "0";
     if (!world) {
-      setFlow(IDLE_FLOW);
+      finishEject();
       return;
     }
     const from = parseFloat((world.style.transform.match(/scale\(([\d.]+)\)/) || [])[1] || "5");
@@ -261,11 +404,7 @@ export function TitleLibrary() {
         world.style.transform = "";
         world.style.opacity = "";
         world.style.willChange = "";
-        if (lastCartRef.current) {
-          lastCartRef.current.style.opacity = "1";
-          lastCartRef.current.querySelector("button")?.focus();
-        }
-        setFlow(IDLE_FLOW);
+        popOut(id);
       },
     );
   };
@@ -277,8 +416,29 @@ export function TitleLibrary() {
     const next = showcase[(idx + dir + showcase.length) % showcase.length];
     visitedRef.current.add(next.id);
     setSelectedId(next.id);
-    setFlow({ phase: "detail", bootId: next.id, fast: true });
+    // The seated cart swaps too, so the right one flies home on eject.
+    const nextEl = stageRef.current?.querySelector<HTMLElement>(
+      `[data-cart-id="${next.id}"]`,
+    );
+    if (lastCartRef.current) lastCartRef.current.style.opacity = "1";
+    if (nextEl) {
+      nextEl.style.opacity = "0.25";
+      lastCartRef.current = nextEl;
+    }
+    applyFlow({ phase: "detail", bootId: next.id, fast: true });
     history.replaceState(null, "", `#project-${next.id}/detail`);
+  };
+
+  // Marks the shelf spot a cartridge left from (the faint ghost slot).
+  const ghostShelf = (id: string) => {
+    const el = stageRef.current?.querySelector<HTMLElement>(
+      `[data-cart-id="${id}"]`,
+    );
+    if (el) {
+      el.style.opacity = "0.25";
+      lastCartRef.current = el;
+    }
+    if (greenLedRef.current) greenLedRef.current.style.opacity = "1";
   };
 
   // Deep link: #project-<id>/detail opens the booted detail directly.
@@ -292,11 +452,23 @@ export function TitleLibrary() {
     setSelectedId(id);
     requestAnimationFrame(() => {
       document.getElementById("projects")?.scrollIntoView();
-      lockScroll(true);
-      setFlow({ phase: "detail", bootId: id, fast: true });
+      ghostShelf(id);
+      openDetail(id, true);
     });
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [reduced]);
+
+  // Debug: ?seat=<id> (with ?seq=1) renders the seated splash state statically.
+  useEffect(() => {
+    if (reduced) return;
+    const id = params.get("seat");
+    if (!id || !showcase.some((e) => e.id === id)) return;
+    setSelectedId(id);
+    setSeated(true);
+    applyFlow({ phase: "splash", bootId: id, fast: false });
+    requestAnimationFrame(() => ghostShelf(id));
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
 
   // Preload scrub frames.
   useEffect(() => {
@@ -705,6 +877,24 @@ export function TitleLibrary() {
                     filter: "drop-shadow(0 14px 18px rgba(0,0,0,0.6))",
                   }}
                 />
+                {/* the booted cartridge stays seated in the slot, top sticking out */}
+                {seated && bootEntry && (
+                  <div
+                    aria-hidden="true"
+                    style={{
+                      position: "absolute",
+                      left: `${(SLOT.cx - SLOT.width / 2) * 100}%`,
+                      top: `${SLOT.top * 100}%`,
+                      width: `${SLOT.width * 100}%`,
+                      aspectRatio: "716 / 592",
+                      transform: `translateY(-${SEAT.stick * 100}%)`,
+                      clipPath: `inset(0 0 ${(1 - SEAT.stick) * 100}% 0)`,
+                      pointerEvents: "none",
+                      filter: "drop-shadow(0 3px 5px rgba(0,0,0,0.45))",
+                    }}
+                    dangerouslySetInnerHTML={{ __html: cartMarkup(bootEntry) }}
+                  />
+                )}
                 {/* slot glow on insert */}
                 <div
                   ref={slotGlowRef}

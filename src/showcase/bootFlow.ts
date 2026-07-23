@@ -55,3 +55,18 @@ export function tween(
 
 /** Where the cartridge lands within the console image (fractions of its box). */
 export const SLOT = { cx: 0.5, top: 0.14, width: 0.4 };
+
+/**
+ * How a cartridge sits in the console, like a real top-loader: `stick` is the
+ * fraction of the cart's height left visible above the slot line while seated,
+ * `hover` is the gap (fraction of the cart's width) it hovers above the slot
+ * before being pushed in.
+ */
+export const SEAT = { stick: 0.3, hover: 0.06 };
+
+/** Spring-loaded ease for the eject pop: overshoots, then settles. */
+export function easePop(k: number): number {
+  const c1 = 1.4;
+  const c3 = c1 + 1;
+  return 1 + c3 * Math.pow(k - 1, 3) + c1 * Math.pow(k - 1, 2);
+}

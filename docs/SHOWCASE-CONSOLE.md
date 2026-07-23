@@ -35,14 +35,25 @@ title screen with real metrics as stats; PRESS START opens the case study.
 Three acts, all in-world:
 
 1. **Boot ritual (full insert + fast-path).** Click: the cartridge lifts off
-   the shelf, arcs to the console and slides into the slot; the power LEDs flip
-   red -> green; the TV static-pops into the project's splash (title + art +
-   LOADING). Full ritual ~1.2s on first insert; a shortened fast-path (~0.5s)
-   on repeat inserts; a second click skips.
+   the shelf, arcs up to hover over the slot mouth, then pushes down into the
+   slot, clipped exactly at the slot line. Like a real top-loader it never
+   disappears: it stays SEATED with the top ~30% sticking out of the console
+   for as long as it is in (splash, dive, detail, and the eject zoom-back).
+   The console gives a tiny press-nudge as it seats, the slot glows, the power
+   LED flips red -> green, and the TV static-pops into the project's splash
+   (title + art + LOADING). Full ritual ~1.2s on first insert; a shortened
+   fast-path (~0.5s) on repeat inserts. Its shelf spot stays as a faint ghost.
 2. **Dive through the glass.** The camera pushes into the TV until the screen
    fills the viewport - the detail view IS what's playing on the TV. Faint CRT
-   dressing (scanlines, corner curvature) persists. `EJECT` reverses the zoom
-   back into the room; the cartridge pops back to the shelf.
+   dressing (scanlines, corner curvature) persists. `EJECT` zooms back into
+   the room (the cartridge is still visibly seated), then the cart SPRINGS up
+   out of the slot with a small overshoot (a real eject button), the TV flicks
+   back to the library preview, the LED drops to standby, and the cart arcs
+   home to its shelf spot. PREV/NEXT swaps the seated cart (and the ghosted
+   shelf spot) so the right cartridge always flies home.
+   Seat geometry: `SEAT` in `src/showcase/bootFlow.ts` (stick 0.3 of cart
+   height above the slot line; the max before the TV bezel clips it is ~0.34).
+   Debug: `?seq=1&seat=<id>` renders the seated splash state statically.
 3. **Detail screen (hybrid uniqueness).** One consistent in-game UI shell:
    title bar (project name, EJECT, PREV/NEXT), content area. Per-project skin:
    the project's label art as hero backdrop, its shell colour as accent.
