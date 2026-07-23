@@ -72,13 +72,23 @@ down since it runs the whole site).
 - **Fallback:** under reduced motion or if the video is unavailable, show the
   settled title-screen poster frame with the text, no scrub.
 
-### Screen 2 — PLAYER 1 (About, character card) · NL
-- You as the playable character: pixel portrait, class ("systems engineer"),
-  origin (Syria → Netherlands), languages as "voice packs," availability.
-- Folded-in credibility (no separate Achievements screen): AWS Certified AI
-  Practitioner, internship graded 9, TulipVision university-adopted, "ships to
-  production" — shown as character badges / a small trophy row.
-- Assets: pixel portrait, character-card frame, small badge art.
+### Screen 2 — PLAYER 1 (About, character card) · NL — BUILT 2026-07-23
+- You as the playable character on a character-select card. The game framing
+  lives in the visuals; the wording stays professional (recruiter-facing).
+  Built as `src/screens/AboutScreen.tsx`, wired into the shell.
+- Content (all from the master resume): a first-person PROFILE bio
+  (`profile.bio`), a TRACK RECORD stat row (count-up on scroll), WHAT SETS ME
+  APART (the three pillars), LANGUAGES with proficiency bars, identity facts
+  (role, base, study, work permit), and a CERTIFICATIONS & COURSES row.
+- Motion (hand-rolled rAF/CSS, no framer): staggered scroll-in entrance, a
+  count-up on the numbers (shared `tween`, so it settles instantly in a hidden
+  tab), and a subtle holographic tilt/sheen on hover-capable pointers. All
+  reduced-motion and touch aware.
+- Decisions: the Syria origin line was dropped (sensitive, unconfirmed) in
+  favour of "Dutch work permit"; the AI-lecture-at-12 story is a possible
+  future humanising addition. Still to do: pixel portrait asset (placeholder in
+  place), NL translation of the bio, and the shared HUD mobile pass.
+- Assets still needed: the pixel portrait.
 
 ### Screen 3 — GAME LIBRARY (Projects, cartridge showcase) · main event
 - The console and 12 cartridges, flagship-first order (§7). Select a cartridge →

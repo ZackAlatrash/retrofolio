@@ -1,4 +1,5 @@
 import { TitleLibrary } from "../screens/TitleLibrary";
+import { AboutScreen } from "../screens/AboutScreen";
 import { GameNav } from "./GameNav";
 import { HelpWidget } from "./HelpWidget";
 import { CrtOverlay } from "./CrtOverlay";
@@ -14,7 +15,7 @@ export function GameShell() {
   return (
     <>
       <TitleLibrary />
-      <Stub id="about" n={3} title="ABOUT" note="the character card is built here" />
+      <AboutScreen />
       <Stub id="skills" n={4} title="SKILL TREE" note="skills screen" />
       <Stub id="patch" n={5} title="PATCH NOTES" note="dev log" />
       <Stub id="contact" n={6} title="CREDITS" note="contact screen" />

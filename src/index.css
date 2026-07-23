@@ -15,6 +15,10 @@
     monospace;
   --font-sans: ui-sans-serif, system-ui, -apple-system, "Segoe UI", Roboto,
     Helvetica, Arial, sans-serif;
+
+  /* Strong custom easings (CSS defaults are too weak). */
+  --ease-out: cubic-bezier(0.23, 1, 0.32, 1);
+  --ease-in-out: cubic-bezier(0.77, 0, 0.175, 1);
 }
 
 html {
@@ -139,6 +143,38 @@ body {
   display: grid;
   grid-template-columns: repeat(7, 1fr);
   gap: 12px;
+}
+
+/* ---- About / PLAYER 01 character card ---- */
+.about-grid {
+  display: grid;
+  grid-template-columns: 290px 1fr;
+  gap: 20px;
+}
+.about-track {
+  display: grid;
+  grid-template-columns: repeat(4, 1fr);
+  gap: 10px;
+}
+.about-traits {
+  display: grid;
+  grid-template-columns: repeat(3, 1fr);
+  gap: 10px;
+}
+@media (max-width: 900px) {
+  .about-grid {
+    grid-template-columns: 1fr;
+  }
+}
+@media (max-width: 680px) {
+  .about-traits {
+    grid-template-columns: 1fr;
+  }
+}
+@media (max-width: 560px) {
+  .about-track {
+    grid-template-columns: repeat(2, 1fr);
+  }
 }
 
 @keyframes splashStatic {

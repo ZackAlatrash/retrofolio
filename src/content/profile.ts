@@ -6,6 +6,7 @@ export const profile: Profile = {
   goesBy: "Zack",
   positioning:
     "AI/LLM systems engineer, not an API caller. I build grounded RAG systems and ship them to production.",
+  bio: "I'm an AI/LLM systems engineer and fourth-year IT student in Haarlem, and I've been building software since I was fifteen. I design grounded retrieval-augmented generation systems and ship them to production: during a six-month internship at Impala Studios I built and deployed a code-aware RAG engine now used company-wide, and alongside my degree I've shipped a university-adopted computer-vision platform and a 65,000-line Android app now in closed beta. The through-line across all of it is the engineering beneath the AI: clean, hexagonal architectures with tests that fail the build on a broken boundary, and evidence-gated pipelines that keep a model from fabricating. I'm looking for a part-time junior developer role from summer 2026 that I can grow into alongside my studies.",
   location: "Haarlem, Netherlands",
   status: "Valid Dutch residence and work permit",
   languages: ["Arabic (native)", "English (C1)", "Dutch (B1, improving)"],

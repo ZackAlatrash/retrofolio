@@ -52,6 +52,8 @@ export interface Profile {
   name: string;
   goesBy: string;
   positioning: string;
+  /** First-person professional summary for the About screen. */
+  bio: string;
   location: string;
   status: string;
   languages: string[];
