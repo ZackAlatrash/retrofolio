@@ -30,6 +30,38 @@ title screen with real metrics as stats; PRESS START opens the case study.
   (tabbed vs scroll vs dashboard) is DEFERRED - decide when we build the detail
   content.
 
+## Cartridge click -> project detail (agreed 2026-07-22)
+
+Three acts, all in-world:
+
+1. **Boot ritual (full insert + fast-path).** Click: the cartridge lifts off
+   the shelf, arcs to the console and slides into the slot; the power LEDs flip
+   red -> green; the TV static-pops into the project's splash (title + art +
+   LOADING). Full ritual ~1.2s on first insert; a shortened fast-path (~0.5s)
+   on repeat inserts; a second click skips.
+2. **Dive through the glass.** The camera pushes into the TV until the screen
+   fills the viewport - the detail view IS what's playing on the TV. Faint CRT
+   dressing (scanlines, corner curvature) persists. `EJECT` reverses the zoom
+   back into the room; the cartridge pops back to the shelf.
+3. **Detail screen (hybrid uniqueness).** One consistent in-game UI shell:
+   title bar (project name, EJECT, PREV/NEXT), content area. Per-project skin:
+   the project's label art as hero backdrop, its shell colour as accent.
+   Modular content blocks per project (gallery, demo GIF, architecture diagram,
+   code artifact, stats, story sections, links) PLUS one signature interactive
+   module per flagship:
+   - Omnipotence: mock query -> pipeline -> cited answer demo
+   - Recomp Tracker: animated weekly-stats dashboard + phone gallery
+   - TulipVision: before/after detection slider on a real field photo
+   - Lex-AI: evidence-gate demo (confidence bar -> answer vs refusal)
+   - Kukis: the live site embedded
+   - Consented Cart / Locked IN: diagram-led (consent write path / policy engine)
+
+Routing: `#project-<id>/detail` deep-links straight into a booted detail view.
+Reduced motion: no flight/dive; the detail opens as a plain view.
+Asset needs: real captures per project (phone screenshots, detection results,
+dashboard shots, short muted demo clips) - generated art is identity, captures
+are proof.
+
 ---
 
 ## 1. Why this and not the alternatives
