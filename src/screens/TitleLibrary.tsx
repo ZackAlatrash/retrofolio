@@ -661,7 +661,12 @@ export function TitleLibrary() {
 
   // ---- the About beat: tilt down -> handheld boots -> dive -> the card ----
   const aboutP = clamp01((p - S3) / (1 - S3));
-  const tiltDim = Math.sin(smooth(aboutP, 0, 0.34) * Math.PI) * 0.38; // veil mid-tilt
+  const tiltE = smooth(aboutP, 0, 0.34);
+  // Mid-tilt only: the veil breathes, the lap's top edge feathers into the
+  // room, and the lap is graded toward the room's tone, so the two arts
+  // cross-blend instead of one sliding over the other as a hard rectangle.
+  const tiltBump = Math.sin(tiltE * Math.PI);
+  const tiltDim = tiltBump * 0.5; // veil mid-tilt
   const backlight = smooth(aboutP, 0.34, 0.42); // the screen wakes
   const bootBurst =
     smooth(aboutP, 0.38, 0.43) * (1 - smooth(aboutP, 0.45, 0.52)); // static pop
@@ -1279,6 +1284,10 @@ export function TitleLibrary() {
             transform: "translateY(102vh)",
             willChange: "transform",
             pointerEvents: "none",
+            // The top edge feathers into the room only while tilting; at rest
+            // the mask collapses to nothing so the full scene shows.
+            WebkitMaskImage: `linear-gradient(to bottom, transparent 0%, black ${(24 * tiltBump).toFixed(1)}%)`,
+            maskImage: `linear-gradient(to bottom, transparent 0%, black ${(24 * tiltBump).toFixed(1)}%)`,
           }}
         >
           <img
@@ -1291,6 +1300,9 @@ export function TitleLibrary() {
               width: "100%",
               height: "100%",
               objectFit: "cover",
+              // A slight permanent grade seats the lap art in the room's mood;
+              // mid-tilt it dips further toward the room's darkness.
+              filter: `brightness(${(0.94 - 0.2 * tiltBump).toFixed(3)}) saturate(${(0.96 - 0.14 * tiltBump).toFixed(3)})`,
             }}
           />
           {/* the handheld's screen: boots up as the camera pushes in */}
