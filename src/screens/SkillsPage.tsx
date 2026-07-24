@@ -375,6 +375,45 @@ export function SkillsPage({ reveal, interactive }: { reveal: number; interactiv
         backgroundPosition: "center",
       }}
     >
+      {/* view switch: outside both views, so there is always a way back */}
+      {interactive && (
+        <div
+          style={{
+            position: "absolute",
+            top: 68,
+            left: 16,
+            zIndex: 5,
+            display: "flex",
+            gap: 4,
+            padding: 5,
+            borderRadius: 8,
+            border: "1px solid rgba(122,162,247,0.22)",
+            background: "rgba(8,13,28,0.82)",
+            opacity: chromeO,
+          }}
+        >
+          {(["sky", "list"] as const).map((v) => (
+            <button
+              key={v}
+              onClick={() => setView(v)}
+              aria-pressed={view === v}
+              style={{
+                fontFamily: PIXEL,
+                fontSize: 7.5,
+                padding: "6px 9px",
+                borderRadius: 5,
+                cursor: "pointer",
+                color: view === v ? "#06091a" : "#8fb6ff",
+                background: view === v ? "#8fb6ff" : "transparent",
+                border: "1px solid rgba(122,162,247,0.35)",
+              }}
+            >
+              {v === "sky" ? "◈ SKY" : "☰ LIST"}
+            </button>
+          ))}
+        </div>
+      )}
+
       {view === "list" && interactive ? (
         <div
           style={{
@@ -733,38 +772,14 @@ export function SkillsPage({ reveal, interactive }: { reveal: number; interactiv
             >
               <div
                 style={{
-                  display: "flex",
-                  alignItems: "center",
-                  justifyContent: "space-between",
-                  gap: 10,
+                  fontFamily: PIXEL,
+                  fontSize: 7,
+                  color: "#68719c",
+                  letterSpacing: 1,
                   marginBottom: 8,
                 }}
               >
-                <span
-                  style={{ fontFamily: PIXEL, fontSize: 7, color: "#68719c", letterSpacing: 1 }}
-                >
-                  CONSTELLATIONS
-                </span>
-                <span style={{ display: "flex", gap: 3 }}>
-                  {(["sky", "list"] as const).map((v) => (
-                    <button
-                      key={v}
-                      onClick={() => setView(v)}
-                      style={{
-                        fontFamily: PIXEL,
-                        fontSize: 6.5,
-                        padding: "4px 6px",
-                        borderRadius: 4,
-                        cursor: "pointer",
-                        color: view === v ? "#06091a" : "#8fb6ff",
-                        background: view === v ? "#8fb6ff" : "rgba(10,16,32,0.7)",
-                        border: "1px solid rgba(122,162,247,0.4)",
-                      }}
-                    >
-                      {v.toUpperCase()}
-                    </button>
-                  ))}
-                </span>
+                CONSTELLATIONS
               </div>
               {skillBranches.map((b, bi) => {
                 const on = focus === b.id;
