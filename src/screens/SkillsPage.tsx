@@ -39,6 +39,10 @@ const smooth = (x: number, a: number, b: number) => {
 };
 const clamp = (v: number, lo: number, hi: number) => Math.max(lo, Math.min(hi, v));
 
+/** Proof-panel width, and the space the navigator rail needs on the left. */
+const PANEL_W = 316;
+const RAIL_CLEAR = 252;
+
 /** The sky world, in SVG units. Wider than a viewport: it pans. */
 const SKY_W = 1900;
 const SKY_H = 740;
@@ -218,6 +222,8 @@ export function SkillsPage({ reveal, interactive }: { reveal: number; interactiv
   const [sel, setSel] = useState<StarPos | null>(null);
   const [focusId, setFocusId] = useState<string | null>(null);
   const [view, setView] = useState<"sky" | "list">("sky");
+  // The proof panel flips to whichever side of the sky the star is NOT on.
+  const [panelSide, setPanelSide] = useState<"left" | "right">("right");
   const active = interactive ? sel : null;
   const focus = interactive ? focusId : null;
 
@@ -284,13 +290,29 @@ export function SkillsPage({ reveal, interactive }: { reveal: number; interactiv
   };
   const wasDrag = () => dragRef.current?.moved ?? false;
 
+  /**
+   * Select a star and park the proof panel clear of it: the panel goes to the
+   * opposite side of the view, and only flips left when there is room beside
+   * the navigator rail.
+   */
+  const selectStar = (n: StarPos) => {
+    setFocusId(n.branch.id);
+    setSel(n);
+    const el = scrollerRef.current;
+    if (!el) return;
+    const scale = el.scrollWidth / SKY_W;
+    const screenX = n.x * scale - el.scrollLeft;
+    const roomForLeft = el.clientWidth > RAIL_CLEAR + PANEL_W + 40;
+    setPanelSide(screenX > el.clientWidth * 0.52 && roomForLeft ? "left" : "right");
+  };
+
   const starO = 0.45 + 0.55 * smooth(reveal, 0, 0.35);
   const titleO = smooth(reveal, 0.45, 0.62);
   const labelO = smooth(reveal, 0.55, 0.75);
   const chromeO = smooth(reveal, 0.72, 0.9);
 
   /** Unfocused constellations recede; nothing dims until something is focused. */
-  const dim = (b: SkillBranch) => (focus && focus !== b.id ? 0.24 : 1);
+  const dim = (b: SkillBranch) => (focus && focus !== b.id ? 0.52 : 1);
   /** Skill labels belong to the focused constellation only. */
   const labelsOn = (b: SkillBranch) => (focus === b.id ? labelO : 0);
 
@@ -447,7 +469,7 @@ export function SkillsPage({ reveal, interactive }: { reveal: number; interactiv
               ))}
 
               {/* P1: the pole star, alone in the upper sky */}
-              <g opacity={starO * (focus ? 0.4 : 1)} style={{ transition: "opacity 0.25s ease" }}>
+              <g opacity={starO * (focus ? 0.6 : 1)} style={{ transition: "opacity 0.25s ease" }}>
                 <circle cx={POLE.x} cy={POLE.y} r={34} fill="url(#halo-pole)" />
                 <circle cx={POLE.x} cy={POLE.y} r={3.2} fill="#ffffff" />
                 <line
@@ -497,7 +519,7 @@ export function SkillsPage({ reveal, interactive }: { reveal: number; interactiv
                       x2={x2}
                       y2={y2}
                       stroke={branch.color}
-                      strokeOpacity={(focus === branch.id ? 0.72 : 0.4) * lineP * dim(branch)}
+                      strokeOpacity={(focus === branch.id ? 0.9 : 0.55) * lineP * dim(branch)}
                       strokeWidth={focus === branch.id ? 1.7 : 1.3}
                       pathLength={1}
                       strokeDasharray={1}
@@ -588,17 +610,9 @@ export function SkillsPage({ reveal, interactive }: { reveal: number; interactiv
                       pointerEvents: interactive ? "auto" : "none",
                       transition: "opacity 0.25s ease",
                     }}
-                    onMouseEnter={() => {
-                      if (!interactive) return;
-                      setFocusId(n.branch.id);
-                      setSel(n);
-                    }}
-                    onFocus={() => {
-                      if (!interactive) return;
-                      setFocusId(n.branch.id);
-                      setSel(n);
-                    }}
-                    onClick={() => interactive && !wasDrag() && setSel(n)}
+                    onMouseEnter={() => interactive && selectStar(n)}
+                    onFocus={() => interactive && selectStar(n)}
+                    onClick={() => interactive && !wasDrag() && selectStar(n)}
                   >
                     {/* level halo (the glow IS the level) */}
                     <circle
@@ -608,7 +622,7 @@ export function SkillsPage({ reveal, interactive }: { reveal: number; interactiv
                       cy={n.y}
                       r={halo * (0.8 + 0.2 * starReveal) * (isSel ? 1.25 : 1)}
                       fill={`url(#halo-${n.branch.id})`}
-                      opacity={(0.4 + 0.12 * lv) * starO * (isSel ? 1.3 : 1)}
+                      opacity={(0.5 + 0.13 * lv) * starO * (isSel ? 1.3 : 1)}
                     />
                     {flare > 0 && (
                       <g opacity={0.55 * starO * starReveal}>
@@ -811,10 +825,15 @@ export function SkillsPage({ reveal, interactive }: { reveal: number; interactiv
           <div
             style={{
               position: "absolute",
-              right: 16,
               ...(active
-                ? { top: "50%", transform: "translateY(-50%)", width: 316, minHeight: 240 }
-                : { bottom: 14, width: 252 }),
+                ? {
+                    ...(panelSide === "left" ? { left: RAIL_CLEAR } : { right: 16 }),
+                    top: "50%",
+                    transform: "translateY(-50%)",
+                    width: PANEL_W,
+                    minHeight: 240,
+                  }
+                : { right: 16, bottom: 14, width: 252 }),
               border: "1px solid rgba(122,162,247,0.28)",
               borderRadius: 10,
               background: active ? "rgba(10,16,32,0.9)" : "rgba(10,16,32,0.66)",
