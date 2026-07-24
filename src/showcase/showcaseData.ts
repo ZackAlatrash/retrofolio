@@ -38,6 +38,15 @@ export const labelUrl = (id: string) => `${base}game/labels/${id}.webp`;
 export const tvUrl = `${base}game/tv.webp`;
 export const consoleUrl = `${base}game/console.webp`;
 export const roomUrl = `${base}game/room.webp`;
+export const handheldUrl = `${base}game/handheld.webp`;
+
+/** The handheld's blank screen, as a % of the trimmed device (measured). */
+export const HANDHELD_SCREEN = {
+  left: 28.08,
+  top: 18.57,
+  width: 43.87,
+  height: 53.37,
+};
 
 /** Solid accent hex per shell colour (for the detail screen skin). */
 export const shellHex: Record<ShellColor, string> = {
