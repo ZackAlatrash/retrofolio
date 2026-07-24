@@ -48,6 +48,17 @@ export const HANDHELD_SCREEN = {
   height: 53.37,
 };
 
+/** First-person lap scene: the handheld held in both hands (About beat). */
+export const lapUrl = `${base}game/lap.webp`;
+
+/** The lap handheld's blank screen, as a % of the scene image (measured). */
+export const LAP_SCREEN = {
+  left: 37.94,
+  top: 34.24,
+  width: 24.06,
+  height: 29.17,
+};
+
 /** Solid accent hex per shell colour (for the detail screen skin). */
 export const shellHex: Record<ShellColor, string> = {
   grey: "#9aa0b8",

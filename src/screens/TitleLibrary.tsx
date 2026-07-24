@@ -15,8 +15,8 @@ import {
   tvUrl,
   consoleUrl,
   roomUrl,
-  handheldUrl,
-  HANDHELD_SCREEN,
+  lapUrl,
+  LAP_SCREEN,
 } from "../showcase/showcaseData";
 import {
   CONTAINER_VH,
@@ -127,8 +127,10 @@ export function TitleLibrary() {
   const seatCloneRef = useRef<HTMLElement | null>(null);
   const visitedRef = useRef<Set<string>>(new Set());
   const worldRef = useRef<HTMLDivElement>(null);
-  // The handheld's screen: the About camera pushes into this exact rect.
-  const handheldScreenRef = useRef<HTMLDivElement>(null);
+  // The lap scene (handheld in hands) and its screen: the About camera tilts
+  // down to the lap layer, then pushes into this exact screen rect.
+  const lapLayerRef = useRef<HTMLDivElement>(null);
+  const lapScreenRef = useRef<HTMLDivElement>(null);
   const aboutBaseRef = useRef<{
     key: string;
     cx: number;
@@ -596,13 +598,15 @@ export function TitleLibrary() {
   }, [reduced, forcedSeq]);
 
   // ---- the About camera ----
-  // Past the station rest the camera keeps going, pushing the whole world into
-  // the handheld's screen until it fills the frame. Measured once per viewport
-  // with the transform cleared, then driven straight off scroll progress.
+  // Past the station rest the view tilts down to the lap (the room slides up
+  // while the lap scene rises in), then pushes into the handheld's measured
+  // screen rect until it fills the frame. Driven straight off scroll progress
+  // so the whole move is scrubbable in both directions.
   useEffect(() => {
     if (reduced) return;
     const world = worldRef.current;
-    if (!world) return;
+    const lap = lapLayerRef.current;
+    if (!world || !lap) return;
     const aP = clamp01((p - S3) / (1 - S3));
     // Never fight the cartridge dive.
     if (flowRef.current.phase !== "shelf") return;
@@ -612,17 +616,18 @@ export function TitleLibrary() {
         world.style.transformOrigin = "";
         world.dataset.aboutCam = "0";
       }
+      lap.style.transform = "translateY(102vh)";
       return;
     }
-    const screen = handheldScreenRef.current;
+    const screen = lapScreenRef.current;
     if (!screen) return;
     const key = `${window.innerWidth}x${window.innerHeight}`;
     let base = aboutBaseRef.current;
     if (!base || base.key !== key) {
-      const prev = world.style.transform;
-      world.style.transform = "";
+      const prev = lap.style.transform;
+      lap.style.transform = "";
       const r = screen.getBoundingClientRect();
-      world.style.transform = prev;
+      lap.style.transform = prev;
       // Layout not settled yet (fonts/art still loading): retry next frame
       // rather than caching a collapsed rect.
       if (!r.width || !r.height) {
@@ -637,10 +642,15 @@ export function TitleLibrary() {
       };
       aboutBaseRef.current = base;
     }
-    const e = smooth(clamp01(aP / 0.72), 0, 1);
-    world.style.transformOrigin = `${base.cx}px ${base.cy}px`;
-    world.style.transform = `scale(${1 + (base.scale - 1) * e})`;
+    // The tilt: the room slides up and away as the lap rises into place.
+    const tiltE = smooth(aP, 0, 0.34);
+    world.style.transformOrigin = "50% 100%";
+    world.style.transform = `translateY(${(-62 * tiltE).toFixed(2)}vh)`;
     world.dataset.aboutCam = "1";
+    // The push: into the screen once the lap has settled.
+    const zoomE = smooth(aP, 0.38, 0.76);
+    lap.style.transformOrigin = `${base.cx}px ${base.cy}px`;
+    lap.style.transform = `translateY(${(102 * (1 - tiltE)).toFixed(2)}vh) scale(${(1 + (base.scale - 1) * zoomE).toFixed(4)})`;
   }, [p, reduced, assetTick, W, H]);
 
   if (reduced) return <ReducedTitleLibrary lang={lang} />;
@@ -649,10 +659,16 @@ export function TitleLibrary() {
   // Raw pull progress 0..1 drives the power-cycle phases.
   const t = clamp01((p - S1) / (S2 - S1));
 
-  // ---- the About camera: keeps pushing down into the handheld ----
+  // ---- the About beat: tilt down -> handheld boots -> dive -> the card ----
   const aboutP = clamp01((p - S3) / (1 - S3));
-  const camP = smooth(clamp01(aboutP / 0.72), 0, 1); // camera, then the card rests
-  const cardIn = smooth(clamp01((aboutP - 0.42) / 0.3), 0, 1);
+  const tiltDim = Math.sin(smooth(aboutP, 0, 0.34) * Math.PI) * 0.38; // veil mid-tilt
+  const backlight = smooth(aboutP, 0.34, 0.42); // the screen wakes
+  const bootBurst =
+    smooth(aboutP, 0.38, 0.43) * (1 - smooth(aboutP, 0.45, 0.52)); // static pop
+  const logoP = smooth(aboutP, 0.46, 0.6); // logo drops, Game Boy style
+  const logoOver = 1 + 1.7 * Math.pow(logoP - 1, 3) + 0.7 * Math.pow(logoP - 1, 2);
+  const loadP = smooth(aboutP, 0.63, 0.75); // loading bar fills
+  const cardIn = smooth(aboutP, 0.78, 0.95); // the card resolves
 
   // ---- the CRT death (on the full-screen picture) ----
   const collapse = smooth(t, 0, 0.2); // vertical squeeze into a line
@@ -711,7 +727,7 @@ export function TitleLibrary() {
         aria-hidden="true"
         style={{
           position: "absolute",
-          top: `${SCRUB_VH + PULL_VH + REST_VH + 200}vh`,
+          top: `${SCRUB_VH + PULL_VH + REST_VH + 285}vh`,
           height: 1,
           width: 1,
         }}
@@ -955,79 +971,6 @@ export function TitleLibrary() {
               }}
             />
 
-            {/* the handheld resting on the cabinet: the About camera dives in */}
-            <div style={{ position: "absolute", left: "5.5%", top: "13%", width: "16%", zIndex: 3 }}>
-              <div
-                aria-hidden="true"
-                style={{
-                  position: "absolute",
-                  left: "6%",
-                  right: "6%",
-                  bottom: "-5%",
-                  height: "13%",
-                  borderRadius: "50%",
-                  background:
-                    "radial-gradient(50% 50% at 50% 50%, rgba(0,0,0,0.65), transparent 75%)",
-                  filter: "blur(2px)",
-                }}
-              />
-              <img
-                src={handheldUrl}
-                alt=""
-                aria-hidden="true"
-                onLoad={() => setAssetTick((n) => n + 1)}
-                style={{ width: "100%", display: "block", imageRendering: "pixelated" }}
-              />
-              <div
-                ref={handheldScreenRef}
-                style={{
-                  position: "absolute",
-                  left: `${HANDHELD_SCREEN.left}%`,
-                  top: `${HANDHELD_SCREEN.top}%`,
-                  width: `${HANDHELD_SCREEN.width}%`,
-                  height: `${HANDHELD_SCREEN.height}%`,
-                  overflow: "hidden",
-                  background: `radial-gradient(90% 80% at 50% 40%, rgba(30,64,110,${(0.28 + 0.6 * camP).toFixed(3)}), rgba(8,14,28,0.96))`,
-                  display: "flex",
-                  alignItems: "center",
-                  justifyContent: "center",
-                }}
-              >
-                <span
-                  className="press-blink"
-                  style={{
-                    fontFamily: PIXEL,
-                    fontSize: "0.3vw",
-                    whiteSpace: "nowrap",
-                    color: "#8fb6ff",
-                    opacity: (1 - cardIn) * (0.4 + 0.6 * camP),
-                    textShadow: "0 0 6px rgba(143,182,255,0.8)",
-                  }}
-                >
-                  PLAYER 01
-                </span>
-                <div
-                  aria-hidden="true"
-                  style={{
-                    position: "absolute",
-                    inset: 0,
-                    background:
-                      "repeating-linear-gradient(rgba(0,0,0,0.22) 0 1px, transparent 1px 2px)",
-                  }}
-                />
-              </div>
-              <div
-                aria-hidden="true"
-                style={{
-                  position: "absolute",
-                  inset: "-10%",
-                  pointerEvents: "none",
-                  background:
-                    "radial-gradient(42% 38% at 50% 45%, rgba(122,162,247,0.35), transparent 70%)",
-                  opacity: 0.2 + 0.8 * camP,
-                }}
-              />
-            </div>
             {/* console bay */}
             <div
               style={{
@@ -1324,6 +1267,142 @@ export function TitleLibrary() {
           </div>
         )}
         </div>
+
+        {/* the lap: the handheld held in both hands (the About beat) */}
+        <div
+          ref={lapLayerRef}
+          aria-hidden="true"
+          style={{
+            position: "absolute",
+            inset: 0,
+            zIndex: 8,
+            transform: "translateY(102vh)",
+            willChange: "transform",
+            pointerEvents: "none",
+          }}
+        >
+          <img
+            src={lapUrl}
+            alt=""
+            onLoad={() => setAssetTick((n) => n + 1)}
+            style={{
+              position: "absolute",
+              inset: 0,
+              width: "100%",
+              height: "100%",
+              objectFit: "cover",
+            }}
+          />
+          {/* the handheld's screen: boots up as the camera pushes in */}
+          <div
+            ref={lapScreenRef}
+            style={{
+              position: "absolute",
+              left: `${LAP_SCREEN.left}%`,
+              top: `${LAP_SCREEN.top}%`,
+              width: `${LAP_SCREEN.width}%`,
+              height: `${LAP_SCREEN.height}%`,
+              overflow: "hidden",
+              background: `radial-gradient(95% 85% at 50% 42%, rgba(26,58,104,${(0.15 + 0.62 * backlight).toFixed(3)}), rgba(7,12,26,0.97))`,
+            }}
+          >
+            <div
+              style={{
+                position: "absolute",
+                inset: 0,
+                opacity: backlight * (1 - cardIn),
+              }}
+            >
+              {/* the logo drops in from above, the way the old handhelds booted */}
+              <div
+                style={{
+                  position: "absolute",
+                  left: 0,
+                  right: 0,
+                  top: `${(-16 + 56 * logoOver).toFixed(2)}%`,
+                  textAlign: "center",
+                  fontFamily: PIXEL,
+                  fontSize: "1.35vw",
+                  color: "#f4f4fb",
+                  textShadow:
+                    "0.12em 0.12em 0 rgba(20,10,60,0.9), 0 0 0.8em rgba(122,162,247,0.5)",
+                }}
+              >
+                PLAYER 01
+              </div>
+              <div
+                style={{
+                  position: "absolute",
+                  left: "27%",
+                  right: "27%",
+                  top: "62%",
+                  height: "5.5%",
+                  borderRadius: 999,
+                  border: "1px solid rgba(143,182,255,0.5)",
+                  padding: "0.35%",
+                  opacity: smooth(aboutP, 0.6, 0.66),
+                }}
+              >
+                <div
+                  style={{
+                    width: `${Math.round(loadP * 100)}%`,
+                    height: "100%",
+                    borderRadius: 999,
+                    background: "linear-gradient(90deg, #7aa2f7, #b8e394)",
+                    boxShadow: "0 0 0.6em rgba(122,162,247,0.7)",
+                  }}
+                />
+              </div>
+            </div>
+            {bootBurst > 0.001 && (
+              <div
+                style={{
+                  position: "absolute",
+                  inset: 0,
+                  opacity: bootBurst,
+                  background:
+                    "repeating-linear-gradient(0deg, rgba(255,255,255,0.25) 0 1px, rgba(10,10,18,0.6) 1px 3px)",
+                  mixBlendMode: "screen",
+                }}
+              />
+            )}
+            <div
+              style={{
+                position: "absolute",
+                inset: 0,
+                background:
+                  "repeating-linear-gradient(rgba(0,0,0,0.2) 0 1px, transparent 1px 2px)",
+              }}
+            />
+          </div>
+          {/* screen glow spilling onto the case and hands */}
+          <div
+            style={{
+              position: "absolute",
+              left: `${LAP_SCREEN.left - 7}%`,
+              top: `${LAP_SCREEN.top - 10}%`,
+              width: `${LAP_SCREEN.width + 14}%`,
+              height: `${LAP_SCREEN.height + 20}%`,
+              pointerEvents: "none",
+              background:
+                "radial-gradient(50% 45% at 50% 48%, rgba(122,162,247,0.32), transparent 72%)",
+              opacity: backlight,
+            }}
+          />
+        </div>
+
+        {/* a breath of dark as the view whips down to the lap */}
+        <div
+          aria-hidden="true"
+          style={{
+            position: "absolute",
+            inset: 0,
+            zIndex: 8,
+            pointerEvents: "none",
+            background: "#05070c",
+            opacity: tiltDim,
+          }}
+        />
 
         {/* inside the handheld: the character card resolves as the camera lands */}
         <div

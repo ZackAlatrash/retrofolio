@@ -11,10 +11,11 @@ export const SCRUB_VH = 220;
 export const PULL_VH = 130;
 export const REST_VH = 70;
 /**
- * about: the camera keeps going, pushing down into the handheld sitting on the
- * cabinet until its screen fills the frame and the character card resolves.
+ * about: the view tilts down to the player's lap, where the handheld is held
+ * in both hands; it boots up, the camera pushes into its screen, and the
+ * character card resolves.
  */
-export const ABOUT_VH = 280;
+export const ABOUT_VH = 340;
 
 export const SCROLLABLE_VH = SCRUB_VH + PULL_VH + REST_VH + ABOUT_VH;
 /** Total container height (sticky viewport included). */
