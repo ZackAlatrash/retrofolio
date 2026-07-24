@@ -7,6 +7,7 @@ import {
   type SkillBranch,
 } from "../content/skills";
 import { useReducedMotion } from "../motion/useReducedMotion";
+import { skyUrl } from "../showcase/showcaseData";
 
 /**
  * The skill constellations as a night sky on the handheld OS. One component,
@@ -196,7 +197,7 @@ skillBranches.forEach((branch, bi) => {
 });
 
 /** Fixed decorative dust stars (deterministic pseudo-random spread). */
-const DUST_STARS = Array.from({ length: 110 }, (_, i) => ({
+const DUST_STARS = Array.from({ length: 34 }, (_, i) => ({
   x: 24 + ((i * 271 + 61) % (SKY_W - 48)),
   y: 14 + ((i * 211 + 97) % (SKY_H - 40)),
   r: 0.6 + (i % 3) * 0.45,
@@ -361,22 +362,15 @@ export function SkillsPage({ reveal, interactive }: { reveal: number; interactiv
               </radialGradient>
             </defs>
 
-            {/* nebulae over the sky world (replaced by Zack's generated art) */}
-            <rect
-              x={SKY_W * 0.52}
-              y={SKY_H * 0.05}
-              width={SKY_W * 0.42}
-              height={SKY_H * 0.5}
-              fill="url(#halo-frontend)"
-              opacity={0.06}
-            />
-            <rect
-              x={SKY_W * 0.02}
-              y={SKY_H * 0.45}
-              width={SKY_W * 0.4}
-              height={SKY_H * 0.5}
-              fill="url(#halo-cloud)"
-              opacity={0.06}
+            {/* the generated night-sky panorama */}
+            <image
+              href={skyUrl}
+              x={0}
+              y={0}
+              width={SKY_W}
+              height={SKY_H}
+              preserveAspectRatio="xMidYMid slice"
+              opacity={0.92}
             />
 
             {/* dust stars: always in the sky */}

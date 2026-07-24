@@ -51,6 +51,9 @@ export const HANDHELD_SCREEN = {
 /** First-person lap scene: the handheld held in both hands (About beat). */
 export const lapUrl = `${base}game/lap.webp`;
 
+/** The night-sky panorama behind the skill constellations. */
+export const skyUrl = `${base}game/sky.webp`;
+
 /** The lap handheld's blank screen, as a % of the scene image (measured). */
 export const LAP_SCREEN = {
   left: 37.94,
