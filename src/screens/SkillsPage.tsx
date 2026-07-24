@@ -316,7 +316,6 @@ export function SkillsPage({ reveal, interactive }: { reveal: number; interactiv
   /** Skill labels belong to the focused constellation only. */
   const labelsOn = (b: SkillBranch) => (focus === b.id ? labelO : 0);
 
-  const totalSkills = STARS.length;
 
   return (
     <div
@@ -325,87 +324,27 @@ export function SkillsPage({ reveal, interactive }: { reveal: number; interactiv
         position: "absolute",
         inset: 0,
         overflow: "hidden",
-        background:
-          "radial-gradient(120% 90% at 30% 12%, #10173a 0%, #0a1028 48%, #05081a 100%)",
-        display: "flex",
-        flexDirection: "column",
+        // the art fills the whole screen; the panning sky sits on top of it
+        backgroundColor: "#05081a",
+        backgroundImage: `linear-gradient(rgba(8,12,32,0.35), rgba(8,12,32,0.35)), url(${skyUrl})`,
+        backgroundSize: "cover",
+        backgroundPosition: "center",
       }}
     >
-      {/* OS chrome: tab strip */}
-      <div
-        style={{
-          display: "flex",
-          alignItems: "center",
-          justifyContent: "center",
-          gap: 26,
-          paddingTop: 72,
-          position: "relative",
-          zIndex: 4,
-          opacity: chromeO,
-        }}
-      >
-        {["STATUS", "SKILLS", "LOG", "CONTACT"].map((t) => (
-          <span
-            key={t}
-            style={{
-              fontFamily: PIXEL,
-              fontSize: t === "SKILLS" ? 12 : 9,
-              color: t === "SKILLS" ? "#f4f4fb" : "#5b6690",
-              textShadow: t === "SKILLS" ? "0 0 12px rgba(143,182,255,0.6)" : "none",
-              letterSpacing: 1,
-            }}
-          >
-            {t === "SKILLS" ? "▸ SKILLS" : t}
-          </span>
-        ))}
-      </div>
-      <div
-        style={{
-          display: "flex",
-          alignItems: "center",
-          justifyContent: "center",
-          gap: 14,
-          marginTop: 10,
-          position: "relative",
-          zIndex: 4,
-          opacity: chromeO,
-        }}
-      >
-        <span
-          className="font-mono"
-          style={{ fontSize: 10.5, letterSpacing: 1.5, color: "#68719c" }}
-        >
-          {skillBranches.length} CONSTELLATIONS · {totalSkills} ABILITIES ·{" "}
-          {view === "sky" ? "PICK ONE TO EXPLORE" : "GROUPED BY DOMAIN"}
-        </span>
-        {interactive && (
-          <span style={{ display: "flex", gap: 4 }}>
-            {(["sky", "list"] as const).map((v) => (
-              <button
-                key={v}
-                onClick={() => setView(v)}
-                style={{
-                  fontFamily: PIXEL,
-                  fontSize: 7.5,
-                  padding: "5px 8px",
-                  borderRadius: 5,
-                  cursor: "pointer",
-                  color: view === v ? "#06091a" : "#8fb6ff",
-                  background: view === v ? "#8fb6ff" : "rgba(10,16,32,0.7)",
-                  border: "1px solid rgba(122,162,247,0.4)",
-                }}
-              >
-                {v.toUpperCase()}
-              </button>
-            ))}
-          </span>
-        )}
-      </div>
-
       {view === "list" && interactive ? (
-        <SkillList />
+        <div
+          style={{
+            position: "absolute",
+            inset: 0,
+            overflowY: "auto",
+            padding: "78px 0 74px",
+            zIndex: 2,
+          }}
+        >
+          <SkillList />
+        </div>
       ) : (
-        <div style={{ flex: 1, position: "relative", minHeight: 0, zIndex: 2 }}>
+        <div style={{ position: "absolute", inset: 0, zIndex: 2 }}>
           <div
             ref={scrollerRef}
             onScroll={onScroll}
@@ -418,13 +357,22 @@ export function SkillsPage({ reveal, interactive }: { reveal: number; interactiv
               inset: 0,
               overflowX: interactive ? "auto" : "hidden",
               overflowY: "hidden",
+              // keep horizontal scroll inside the sky: without this the
+              // trackpad swipe chains to the browser's back/forward gesture
+              overscrollBehaviorX: "contain",
+              touchAction: "pan-y",
               scrollbarWidth: "none",
               cursor: interactive ? "grab" : "default",
             }}
           >
             <svg
               viewBox={`0 0 ${SKY_W} ${SKY_H}`}
-              style={{ height: "100%", aspectRatio: `${SKY_W} / ${SKY_H}`, display: "block" }}
+              style={{
+                height: "100%",
+                minWidth: "100%",
+                aspectRatio: `${SKY_W} / ${SKY_H}`,
+                display: "block",
+              }}
               role="list"
               aria-label="Skill constellations"
             >
@@ -743,14 +691,38 @@ export function SkillsPage({ reveal, interactive }: { reveal: number; interactiv
             >
               <div
                 style={{
-                  fontFamily: PIXEL,
-                  fontSize: 7,
-                  color: "#68719c",
-                  letterSpacing: 1,
-                  marginBottom: 6,
+                  display: "flex",
+                  alignItems: "center",
+                  justifyContent: "space-between",
+                  gap: 10,
+                  marginBottom: 8,
                 }}
               >
-                CONSTELLATIONS
+                <span
+                  style={{ fontFamily: PIXEL, fontSize: 7, color: "#68719c", letterSpacing: 1 }}
+                >
+                  CONSTELLATIONS
+                </span>
+                <span style={{ display: "flex", gap: 3 }}>
+                  {(["sky", "list"] as const).map((v) => (
+                    <button
+                      key={v}
+                      onClick={() => setView(v)}
+                      style={{
+                        fontFamily: PIXEL,
+                        fontSize: 6.5,
+                        padding: "4px 6px",
+                        borderRadius: 4,
+                        cursor: "pointer",
+                        color: view === v ? "#06091a" : "#8fb6ff",
+                        background: view === v ? "#8fb6ff" : "rgba(10,16,32,0.7)",
+                        border: "1px solid rgba(122,162,247,0.4)",
+                      }}
+                    >
+                      {v.toUpperCase()}
+                    </button>
+                  ))}
+                </span>
               </div>
               {skillBranches.map((b, bi) => {
                 const on = focus === b.id;
@@ -833,7 +805,7 @@ export function SkillsPage({ reveal, interactive }: { reveal: number; interactiv
                     width: PANEL_W,
                     minHeight: 240,
                   }
-                : { right: 16, bottom: 14, width: 252 }),
+                : { right: 92, bottom: 86, width: 252 }),
               border: "1px solid rgba(122,162,247,0.28)",
               borderRadius: 10,
               background: active ? "rgba(10,16,32,0.9)" : "rgba(10,16,32,0.66)",
@@ -897,15 +869,21 @@ export function SkillsPage({ reveal, interactive }: { reveal: number; interactiv
       {/* languages loadout */}
       <div
         style={{
-          position: "relative",
+          position: "absolute",
+          left: 0,
+          right: 0,
+          bottom: 0,
           zIndex: 3,
+          background:
+            "linear-gradient(to top, rgba(5,8,26,0.9), rgba(5,8,26,0.55) 60%, transparent)",
           display: "flex",
           alignItems: "center",
           justifyContent: "center",
           flexWrap: "wrap",
           gap: 8,
-          padding: "0 20px 24px",
+          padding: "26px 20px 20px",
           opacity: chromeO,
+          pointerEvents: "none",
         }}
       >
         <span style={{ fontFamily: PIXEL, fontSize: 7.5, color: "#8a93bd", marginRight: 6 }}>
