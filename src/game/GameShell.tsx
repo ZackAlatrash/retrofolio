@@ -5,6 +5,12 @@ import { HelpWidget } from "./HelpWidget";
 import { CrtOverlay } from "./CrtOverlay";
 import { useGameRoute } from "./useGameRoute";
 import { useReducedMotion } from "../motion/useReducedMotion";
+import { SkillsMock } from "../screens/SkillsMock";
+
+const MOCK =
+  typeof window !== "undefined"
+    ? new URLSearchParams(window.location.search).get("mock")
+    : null;
 
 
 /**
@@ -15,6 +21,15 @@ import { useReducedMotion } from "../motion/useReducedMotion";
 export function GameShell() {
   const { reveal, morph, active } = useGameRoute();
   const reducedMotion = useReducedMotion();
+  // Mockup review: the skills constellation solo, outside the pinned stage.
+  if (MOCK === "skills") {
+    return (
+      <>
+        <SkillsMock />
+        <CrtOverlay />
+      </>
+    );
+  }
   return (
     <>
       <TitleLibrary />
