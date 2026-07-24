@@ -1,4 +1,4 @@
-import { useMemo, useState } from "react";
+import { useState } from "react";
 import {
   skillBranches,
   languages,
@@ -6,17 +6,24 @@ import {
   type Skill,
   type SkillBranch,
 } from "../content/skills";
+import { useReducedMotion } from "../motion/useReducedMotion";
 
 /**
- * DISPOSABLE MOCKUP for the SKILL TREE (?mock=skills): the handheld OS's next
- * menu page after the About card. A constellation: six branches radiating from
- * a hub, node size and glow derived from evidence, hover/click opens the proof
- * panel with deep-link chips to the proving cartridges. Approved layout gets
- * rebuilt for real with the OS tab transition; mobile/reduced motion will get
- * a flat accordion instead of the graph.
+ * The skill constellation as a night sky on the handheld OS. One component,
+ * one dial: `reveal` (0..1).
+ *   0    - backdrop: faint twinkling stars behind the About card
+ *   ->1  - the stars shine, constellation lines draw branch by branch, the
+ *          names appear, then the OS chrome (tabs, proof panel, languages)
+ * At reveal 1 it is the interactive SKILLS page: hovering a star focuses its
+ * branch and opens the proof panel with deep links to the proving cartridges.
  */
 
 const PIXEL = '"Press Start 2P", ui-monospace, monospace';
+const smooth = (x: number, a: number, b: number) => {
+  if (b <= a) return x >= b ? 1 : 0;
+  const t = Math.max(0, Math.min(1, (x - a) / (b - a)));
+  return t * t * (3 - 2 * t);
+};
 
 const CX = 450;
 const CY = 380;
@@ -25,19 +32,19 @@ const STEP = 42;
 /** Branch angles in degrees; -90 is straight up. Order matches skillBranches. */
 const ANGLES = [-90, -34, 34, 90, 146, 214];
 
-interface NodePos {
+interface StarPos {
   branch: SkillBranch;
+  bi: number;
   skill: Skill;
   x: number;
   y: number;
-  labelAnchor: "start" | "end" | "middle";
+  labelAnchor: "start" | "end";
   labelDx: number;
-  labelDy: number;
 }
 
-function layout(): { nodes: NodePos[]; lines: { branch: SkillBranch; pts: string }[] } {
-  const nodes: NodePos[] = [];
-  const lines: { branch: SkillBranch; pts: string }[] = [];
+function layout() {
+  const stars: StarPos[] = [];
+  const lines: { branch: SkillBranch; bi: number; pts: string }[] = [];
   skillBranches.forEach((branch, bi) => {
     const a = (ANGLES[bi] * Math.PI) / 180;
     const dx = Math.cos(a);
@@ -48,59 +55,85 @@ function layout(): { nodes: NodePos[]; lines: { branch: SkillBranch; pts: string
       const x = CX + dx * r;
       const y = CY + dy * r;
       pts.push(`${x},${y}`);
-      const side = Math.abs(dx) < 0.3 ? "vertical" : dx > 0 ? "right" : "left";
-      nodes.push({
+      stars.push({
         branch,
+        bi,
         skill,
         x,
         y,
-        labelAnchor: side === "vertical" ? "start" : side === "right" ? "start" : "end",
-        labelDx: side === "vertical" ? 16 : dx > 0 ? 15 : -15,
-        labelDy: 4,
+        labelAnchor: Math.abs(dx) < 0.3 || dx > 0 ? "start" : "end",
+        labelDx: Math.abs(dx) < 0.3 ? 17 : dx > 0 ? 16 : -16,
       });
     });
-    lines.push({ branch, pts: pts.join(" ") });
+    lines.push({ branch, bi, pts: pts.join(" ") });
   });
-  return { nodes, lines };
+  return { stars, lines };
 }
 
-export function SkillsMock() {
-  const { nodes, lines } = layout();
-  const [sel, setSel] = useState<NodePos | null>(null);
-  const active = sel;
+const { stars: STARS, lines: LINES } = (() => layout())();
 
-  const branchDim = (b: SkillBranch) =>
-    active && active.branch.id !== b.id ? 0.32 : 1;
+/** Fixed decorative dust stars (deterministic pseudo-random spread). */
+const DUST_STARS = Array.from({ length: 46 }, (_, i) => ({
+  x: 30 + ((i * 167 + 61) % 840),
+  y: 16 + ((i * 211 + 97) % 690),
+  r: 0.7 + (i % 3) * 0.45,
+  delay: `${((i * 0.37) % 3.4).toFixed(2)}s`,
+}));
 
-  const totalSkills = useMemo(
-    () => skillBranches.reduce((n, b) => n + b.skills.length, 0),
-    [],
-  );
+/** A 4-point sparkle star. */
+function Sparkle({ x, y, s, fill }: { x: number; y: number; s: number; fill: string }) {
+  const k = s * 0.28;
+  const pts = `${x},${y - s} ${x + k},${y - k} ${x + s},${y} ${x + k},${y + k} ${x},${y + s} ${x - k},${y + k} ${x - s},${y} ${x - k},${y - k}`;
+  return <polygon points={pts} fill={fill} />;
+}
+
+export function SkillsPage({ reveal, interactive }: { reveal: number; interactive: boolean }) {
+  const reduced = useReducedMotion();
+  const [sel, setSel] = useState<StarPos | null>(null);
+  const active = interactive ? sel : null;
+
+  const starO = 0.42 + 0.58 * smooth(reveal, 0, 0.35);
+  const titleO = smooth(reveal, 0.45, 0.62);
+  const labelO = smooth(reveal, 0.55, 0.75);
+  const chromeO = smooth(reveal, 0.72, 0.9);
+
+  const branchDim = (b: SkillBranch) => (active && active.branch.id !== b.id ? 0.3 : 1);
 
   return (
-    <section
-      id="skills"
-      aria-label="Skills"
+    <div
+      aria-hidden={reveal < 0.7}
       style={{
-        minHeight: "100vh",
-        position: "relative",
+        position: "absolute",
+        inset: 0,
         overflow: "hidden",
         background:
-          "radial-gradient(115% 90% at 50% 30%, #14284c 0%, #0b1226 55%, #070b18 100%)",
+          "radial-gradient(120% 90% at 30% 12%, #131b3a 0%, #0b1128 48%, #06091a 100%)",
         display: "flex",
         flexDirection: "column",
       }}
     >
-      {/* handheld OS chrome: tab strip */}
+      {/* faint nebulae */}
+      <div
+        aria-hidden="true"
+        style={{
+          position: "absolute",
+          inset: 0,
+          background:
+            "radial-gradient(42% 34% at 72% 26%, rgba(187,154,247,0.10), transparent 70%), radial-gradient(36% 30% at 22% 68%, rgba(122,162,247,0.09), transparent 70%)",
+        }}
+      />
+
+      {/* OS chrome: tab strip */}
       <div
         style={{
           display: "flex",
           alignItems: "center",
           justifyContent: "center",
           gap: 26,
-          paddingTop: 74,
+          paddingTop: 72,
           position: "relative",
           zIndex: 2,
+          opacity: chromeO,
         }}
       >
         {["STATUS", "SKILLS", "LOG", "CONTACT"].map((t) => (
@@ -128,12 +161,13 @@ export function SkillsMock() {
           color: "#68719c",
           position: "relative",
           zIndex: 2,
+          opacity: chromeO,
         }}
       >
-        {totalSkills} ABILITIES · LEVELS = SHIPPED USES · SELECT A NODE FOR PROOF
+        {STARS.length} ABILITIES · LEVELS = SHIPPED USES · SELECT A STAR FOR PROOF
       </div>
 
-      {/* constellation + proof panel */}
+      {/* the sky + proof panel */}
       <div
         style={{
           flex: 1,
@@ -141,7 +175,7 @@ export function SkillsMock() {
           alignItems: "stretch",
           justifyContent: "center",
           gap: 8,
-          padding: "0 18px 14px",
+          padding: "0 18px 10px",
           position: "relative",
           zIndex: 2,
           minHeight: 0,
@@ -149,55 +183,58 @@ export function SkillsMock() {
       >
         <svg
           viewBox="0 0 900 740"
-          style={{ flex: 1, maxWidth: 950, height: "100%", minHeight: 480 }}
+          style={{ flex: 1, maxWidth: 950, height: "100%", minHeight: 460 }}
           role="list"
           aria-label="Skill constellation"
         >
-          {/* branch lines */}
-          {lines.map(({ branch, pts }) => (
-            <polyline
-              key={branch.id}
-              points={pts}
-              fill="none"
-              stroke={branch.color}
-              strokeOpacity={0.34 * branchDim(branch)}
-              strokeWidth={1.6}
+          {/* dust stars: always in the sky */}
+          {DUST_STARS.map((d, i) => (
+            <circle
+              key={i}
+              className={reduced ? undefined : "sky-star"}
+              cx={d.x}
+              cy={d.y}
+              r={d.r}
+              fill="#cfe0ff"
+              opacity={0.32}
+              style={{ animationDelay: d.delay }}
             />
           ))}
 
-          {/* hub */}
-          <g>
-            <rect
-              x={CX - 9}
-              y={CY - 9}
-              width={18}
-              height={18}
-              transform={`rotate(45 ${CX} ${CY})`}
-              fill="#f4f4fb"
-              opacity={0.9}
-            />
-            <rect
-              x={CX - 15}
-              y={CY - 15}
-              width={30}
-              height={30}
-              transform={`rotate(45 ${CX} ${CY})`}
-              fill="none"
-              stroke="#8fb6ff"
-              strokeOpacity={0.5}
-            />
+          {/* constellation lines: draw on with the reveal, branch by branch */}
+          {LINES.map(({ branch, bi, pts }) => {
+            const lineP = smooth(reveal, 0.14 + bi * 0.05, 0.46 + bi * 0.05);
+            return (
+              <polyline
+                key={branch.id}
+                points={pts}
+                fill="none"
+                stroke={branch.color}
+                strokeOpacity={0.42 * lineP * branchDim(branch)}
+                strokeWidth={1.4}
+                pathLength={1}
+                strokeDasharray={1}
+                strokeDashoffset={1 - lineP}
+              />
+            );
+          })}
+
+          {/* the player star at the hub */}
+          <g opacity={starO}>
+            <circle cx={CX} cy={CY} r={16} fill="#8fb6ff" opacity={0.25} />
+            <Sparkle x={CX} y={CY} s={13} fill="#f4f4fb" />
             <text
               x={CX}
               y={CY + 34}
               textAnchor="middle"
-              style={{ fontFamily: PIXEL, fontSize: 8, fill: "#8fb6ff" }}
+              style={{ fontFamily: PIXEL, fontSize: 8, fill: "#8fb6ff", opacity: titleO }}
             >
               P1
             </text>
           </g>
 
-          {/* branch titles at the tips */}
-          {lines.map(({ branch }, bi) => {
+          {/* branch names at the constellation tips */}
+          {LINES.map(({ branch, bi }) => {
             const a = (ANGLES[bi] * Math.PI) / 180;
             const r = R0 + branch.skills.length * STEP + 6;
             const x = CX + Math.cos(a) * r;
@@ -207,12 +244,14 @@ export function SkillsMock() {
                 key={branch.id}
                 x={x}
                 y={y}
-                textAnchor={Math.abs(Math.cos(a)) < 0.3 ? "middle" : Math.cos(a) > 0 ? "start" : "end"}
+                textAnchor={
+                  Math.abs(Math.cos(a)) < 0.3 ? "middle" : Math.cos(a) > 0 ? "start" : "end"
+                }
                 style={{
                   fontFamily: PIXEL,
                   fontSize: 9.5,
                   fill: branch.color,
-                  opacity: branchDim(branch),
+                  opacity: titleO * branchDim(branch),
                 }}
               >
                 {branch.name}
@@ -220,42 +259,55 @@ export function SkillsMock() {
             );
           })}
 
-          {/* nodes */}
-          {nodes.map((n) => {
+          {/* the skill stars */}
+          {STARS.map((n) => {
             const lv = skillLevel(n.skill);
-            const rad = 5 + lv * 1.5;
+            const s = 4.5 + lv * 1.4;
             const isSel = active?.skill.id === n.skill.id;
+            const starReveal = smooth(reveal, 0.05 + n.bi * 0.04, 0.4 + n.bi * 0.04);
             return (
               <g
                 key={`${n.branch.id}-${n.skill.id}`}
                 role="listitem"
-                tabIndex={0}
+                tabIndex={interactive ? 0 : -1}
                 aria-label={`${n.skill.name}, level ${lv}`}
-                style={{ cursor: "pointer", outline: "none", opacity: branchDim(n.branch) }}
-                onMouseEnter={() => setSel(n)}
-                onFocus={() => setSel(n)}
-                onClick={() => setSel(n)}
+                style={{
+                  cursor: interactive ? "pointer" : "default",
+                  outline: "none",
+                  opacity: branchDim(n.branch),
+                  pointerEvents: interactive ? "auto" : "none",
+                }}
+                onMouseEnter={() => interactive && setSel(n)}
+                onFocus={() => interactive && setSel(n)}
+                onClick={() => interactive && setSel(n)}
               >
-                {/* glow */}
-                <circle cx={n.x} cy={n.y} r={rad + 7} fill={n.branch.color} opacity={isSel ? 0.4 : 0.12 + lv * 0.03} />
-                <rect
-                  x={n.x - rad}
-                  y={n.y - rad}
-                  width={rad * 2}
-                  height={rad * 2}
-                  transform={`rotate(45 ${n.x} ${n.y})`}
-                  fill={isSel ? "#f4f4fb" : n.branch.color}
-                  stroke="#0b1226"
-                  strokeWidth={1.4}
+                <circle
+                  cx={n.x}
+                  cy={n.y}
+                  r={s + 8}
+                  fill={n.branch.color}
+                  opacity={(isSel ? 0.45 : 0.1 + lv * 0.04 + 0.1 * starReveal) * starO}
                 />
+                <g
+                  className={reduced || isSel ? undefined : "sky-star"}
+                  style={{ animationDelay: `${((n.x + n.y) % 3.4).toFixed(2)}s` }}
+                >
+                  <Sparkle
+                    x={n.x}
+                    y={n.y}
+                    s={s * (0.72 + 0.28 * starReveal)}
+                    fill={isSel ? "#ffffff" : starReveal > 0.5 ? "#eef2ff" : "#aab8e8"}
+                  />
+                </g>
                 <text
                   x={n.x + n.labelDx}
-                  y={n.y + n.labelDy}
+                  y={n.y + 4}
                   textAnchor={n.labelAnchor}
                   className="font-mono"
                   style={{
                     fontSize: 11.5,
                     fill: isSel ? "#f4f4fb" : "#aab2d4",
+                    opacity: labelO,
                     paintOrder: "stroke",
                     stroke: "#0a0f21",
                     strokeWidth: 3,
@@ -275,20 +327,17 @@ export function SkillsMock() {
             alignSelf: "center",
             border: "1px solid rgba(122,162,247,0.28)",
             borderRadius: 10,
-            background: "rgba(10,16,32,0.78)",
+            background: "rgba(10,16,32,0.82)",
             padding: "16px 17px",
             minHeight: 240,
+            opacity: chromeO,
+            pointerEvents: interactive ? "auto" : "none",
           }}
         >
           {active ? (
             <>
               <div
-                style={{
-                  fontFamily: PIXEL,
-                  fontSize: 8,
-                  color: active.branch.color,
-                  letterSpacing: 1,
-                }}
+                style={{ fontFamily: PIXEL, fontSize: 8, color: active.branch.color, letterSpacing: 1 }}
               >
                 {active.branch.name}
               </div>
@@ -303,7 +352,6 @@ export function SkillsMock() {
               >
                 {active.skill.name}
               </div>
-              {/* pips */}
               <div style={{ display: "flex", gap: 4, alignItems: "center", marginBottom: 10 }}>
                 {Array.from({ length: 5 }).map((_, i) => (
                   <span
@@ -334,9 +382,7 @@ export function SkillsMock() {
               >
                 {active.skill.blurb}
               </p>
-              <div
-                style={{ fontFamily: PIXEL, fontSize: 7.5, color: "#8a93bd", marginBottom: 8 }}
-              >
+              <div style={{ fontFamily: PIXEL, fontSize: 7.5, color: "#8a93bd", marginBottom: 8 }}>
                 PROVEN IN
               </div>
               <div style={{ display: "flex", flexWrap: "wrap", gap: 6 }}>
@@ -379,9 +425,15 @@ export function SkillsMock() {
           ) : (
             <div
               className="font-mono"
-              style={{ fontSize: 11.5, lineHeight: 1.7, color: "#68719c", paddingTop: 44, textAlign: "center" }}
+              style={{
+                fontSize: 11.5,
+                lineHeight: 1.7,
+                color: "#68719c",
+                paddingTop: 44,
+                textAlign: "center",
+              }}
             >
-              ▸ hover a node
+              ▸ hover a star
               <br />
               every level is backed by
               <br />
@@ -401,7 +453,8 @@ export function SkillsMock() {
           justifyContent: "center",
           flexWrap: "wrap",
           gap: 8,
-          padding: "0 20px 26px",
+          padding: "0 20px 24px",
+          opacity: chromeO,
         }}
       >
         <span style={{ fontFamily: PIXEL, fontSize: 7.5, color: "#8a93bd", marginRight: 6 }}>
@@ -443,9 +496,9 @@ export function SkillsMock() {
           inset: 0,
           pointerEvents: "none",
           background:
-            "radial-gradient(125% 95% at 50% 45%, transparent 56%, rgba(10,22,48,0.55) 100%)",
+            "radial-gradient(125% 95% at 50% 45%, transparent 56%, rgba(8,14,34,0.6) 100%)",
         }}
       />
-    </section>
+    </div>
   );
 }

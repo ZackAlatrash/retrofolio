@@ -5,7 +5,7 @@ import { HelpWidget } from "./HelpWidget";
 import { CrtOverlay } from "./CrtOverlay";
 import { useGameRoute } from "./useGameRoute";
 import { useReducedMotion } from "../motion/useReducedMotion";
-import { SkillsMock } from "../screens/SkillsMock";
+import { SkillsPage } from "../screens/SkillsPage";
 
 const MOCK =
   typeof window !== "undefined"
@@ -21,11 +21,13 @@ const MOCK =
 export function GameShell() {
   const { reveal, morph, active } = useGameRoute();
   const reducedMotion = useReducedMotion();
-  // Mockup review: the skills constellation solo, outside the pinned stage.
+  // Mockup review: the skills constellation solo, fully revealed.
   if (MOCK === "skills") {
     return (
       <>
-        <SkillsMock />
+        <section id="skills" aria-label="Skills" style={{ minHeight: "100vh", position: "relative" }}>
+          <SkillsPage reveal={1} interactive />
+        </section>
         <CrtOverlay />
       </>
     );
@@ -36,7 +38,11 @@ export function GameShell() {
       {/* Under reduced motion the camera move is skipped, so the card needs a
           plain section; otherwise it resolves inside the handheld. */}
       {reducedMotion && <AboutScreen />}
-      <Stub id="skills" n={4} title="SKILL TREE" note="skills screen" />
+      {reducedMotion && (
+        <section id="skills" aria-label="Skills" style={{ minHeight: "100vh", position: "relative" }}>
+          <SkillsPage reveal={1} interactive />
+        </section>
+      )}
       <Stub id="patch" n={5} title="PATCH NOTES" note="dev log" />
       <Stub id="contact" n={6} title="CREDITS" note="contact screen" />
       <GameNav reveal={reveal} morph={morph} active={active} />

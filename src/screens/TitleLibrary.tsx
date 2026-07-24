@@ -23,13 +23,16 @@ import {
   SCRUB_VH,
   PULL_VH,
   REST_VH,
+  ABOUT_VH,
   S1,
   S2,
   S3,
+  S4,
   clamp01,
   smooth,
 } from "../showcase/sequence";
 import { AboutCard } from "./AboutCard";
+import { SkillsPage } from "./SkillsPage";
 import { DetailOverlay, SplashCard } from "../showcase/DetailOverlay";
 import {
   IDLE_FLOW,
@@ -607,7 +610,7 @@ export function TitleLibrary() {
     const world = worldRef.current;
     const lap = lapLayerRef.current;
     if (!world || !lap) return;
-    const aP = clamp01((p - S3) / (1 - S3));
+    const aP = clamp01((p - S3) / (S4 - S3));
     // Never fight the cartridge dive.
     if (flowRef.current.phase !== "shelf") return;
     if (aP <= 0.001) {
@@ -660,7 +663,7 @@ export function TitleLibrary() {
   const t = clamp01((p - S1) / (S2 - S1));
 
   // ---- the About beat: tilt down -> handheld boots -> dive -> the card ----
-  const aboutP = clamp01((p - S3) / (1 - S3));
+  const aboutP = clamp01((p - S3) / (S4 - S3));
   const tiltE = smooth(aboutP, 0, 0.34);
   // Mid-tilt only: the veil breathes, the lap's top edge feathers into the
   // room, and the lap is graded toward the room's tone, so the two arts
@@ -674,6 +677,10 @@ export function TitleLibrary() {
   const logoOver = 1 + 1.7 * Math.pow(logoP - 1, 3) + 0.7 * Math.pow(logoP - 1, 2);
   const loadP = smooth(aboutP, 0.63, 0.75); // loading bar fills
   const cardIn = smooth(aboutP, 0.78, 0.95); // the card resolves
+
+  // ---- the constellation reveal: the card lifts, the stars shine ----
+  const skillsP = clamp01((p - S4) / (1 - S4));
+  const cardExit = smooth(skillsP, 0, 0.22);
 
   // ---- the CRT death (on the full-screen picture) ----
   const collapse = smooth(t, 0, 0.2); // vertical squeeze into a line
@@ -733,6 +740,17 @@ export function TitleLibrary() {
         style={{
           position: "absolute",
           top: `${SCRUB_VH + PULL_VH + REST_VH + 285}vh`,
+          height: 1,
+          width: 1,
+        }}
+      />
+      {/* deep-link anchor: lands with the constellation revealed */}
+      <div
+        id="skills"
+        aria-hidden="true"
+        style={{
+          position: "absolute",
+          top: `${SCRUB_VH + PULL_VH + REST_VH + ABOUT_VH + 195}vh`,
           height: 1,
           width: 1,
         }}
@@ -1416,21 +1434,33 @@ export function TitleLibrary() {
           }}
         />
 
+        {/* the night sky on the OS: the skill constellation, waiting behind the card */}
+        <div
+          style={{
+            position: "absolute",
+            inset: 0,
+            zIndex: 8,
+            opacity: cardIn,
+            pointerEvents: "none",
+          }}
+        >
+          <SkillsPage reveal={skillsP} interactive={skillsP > 0.75} />
+        </div>
+
         {/* inside the handheld: the character card resolves as the camera lands */}
         <div
-          aria-hidden={cardIn < 0.5}
+          aria-hidden={cardIn < 0.5 || cardExit > 0.5}
           style={{
             position: "absolute",
             inset: 0,
             zIndex: 9,
-            opacity: cardIn,
-            pointerEvents: cardIn > 0.6 ? "auto" : "none",
+            opacity: cardIn * (1 - cardExit),
+            pointerEvents: cardIn > 0.6 && cardExit < 0.3 ? "auto" : "none",
+            transform: `translateY(${(-9 * cardExit).toFixed(2)}vh) scale(${(1 - 0.025 * cardExit).toFixed(4)})`,
             display: "flex",
             alignItems: "center",
             justifyContent: "center",
             padding: "20px",
-            background:
-              "radial-gradient(120% 90% at 50% 35%, #101733 0%, #070a16 62%, #05070c 100%)",
           }}
         >
           <div

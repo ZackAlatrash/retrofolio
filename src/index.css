@@ -274,6 +274,25 @@ body {
   }
 }
 
+/* ---- the skill constellation night sky ---- */
+@keyframes skyTwinkle {
+  0%,
+  100% {
+    opacity: 0.55;
+  }
+  50% {
+    opacity: 1;
+  }
+}
+.sky-star {
+  animation: skyTwinkle 3.4s ease-in-out infinite;
+}
+@media (prefers-reduced-motion: reduce) {
+  .sky-star {
+    animation: none;
+  }
+}
+
 @keyframes splashStatic {
   from {
     opacity: 1;

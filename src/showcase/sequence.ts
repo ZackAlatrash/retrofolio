@@ -13,11 +13,16 @@ export const REST_VH = 70;
 /**
  * about: the view tilts down to the player's lap, where the handheld is held
  * in both hands; it boots up, the camera pushes into its screen, and the
- * character card resolves.
+ * character card resolves over a faint night sky.
  */
 export const ABOUT_VH = 340;
+/**
+ * skills: the card lifts away and the stars behind it shine, revealing that
+ * the sky was the skill constellation all along.
+ */
+export const SKILLS_VH = 230;
 
-export const SCROLLABLE_VH = SCRUB_VH + PULL_VH + REST_VH + ABOUT_VH;
+export const SCROLLABLE_VH = SCRUB_VH + PULL_VH + REST_VH + ABOUT_VH + SKILLS_VH;
 /** Total container height (sticky viewport included). */
 export const CONTAINER_VH = SCROLLABLE_VH + 100;
 
@@ -27,6 +32,8 @@ export const S1 = SCRUB_VH / SCROLLABLE_VH;
 export const S2 = (SCRUB_VH + PULL_VH) / SCROLLABLE_VH;
 /** Fraction where the station rest ends and the About camera begins. */
 export const S3 = (SCRUB_VH + PULL_VH + REST_VH) / SCROLLABLE_VH;
+/** Fraction where About ends and the constellation reveal begins. */
+export const S4 = (SCRUB_VH + PULL_VH + REST_VH + ABOUT_VH) / SCROLLABLE_VH;
 
 export const clamp01 = (x: number) => Math.max(0, Math.min(1, x));
 export const smooth = (x: number, a: number, b: number) => {
