@@ -227,32 +227,73 @@ export function SkillsPage({ reveal, interactive }: { reveal: number; interactiv
   const active = interactive ? sel : null;
   const focus = interactive ? focusId : null;
 
-  const scrollerRef = useRef<HTMLDivElement>(null);
-  const dragRef = useRef<{ startX: number; startLeft: number; moved: boolean } | null>(null);
+  // ---- panning ----
+  // Deliberately NOT a native scroll container: a scrollable element lets the
+  // trackpad's horizontal gesture reach the browser and fire back/forward
+  // navigation (overscroll-behavior does not reliably stop it). The sky is a
+  // plain transformed layer instead, so the browser has nothing to hijack; we
+  // handle wheel, drag and keys ourselves and let vertical wheel fall through
+  // to the page.
+  const rootRef = useRef<HTMLDivElement>(null);
+  const viewportRef = useRef<HTMLDivElement>(null);
+  const worldRef = useRef<HTMLDivElement>(null);
+  const panRef = useRef(0);
+  const maxPanRef = useRef(0);
+  const dragRef = useRef<{ startX: number; startPan: number; moved: boolean } | null>(null);
+  const [skyW, setSkyW] = useState(0);
   const [pan, setPan] = useState({ left: false, right: true });
 
-  // Backdrop mode stays centred; the user takes over once it is interactive.
+  /** Move the sky. Clamped to its own bounds, so it can never overscroll. */
+  const applyPan = (x: number, animate = false) => {
+    const world = worldRef.current;
+    if (!world) return;
+    const next = clamp(x, 0, maxPanRef.current);
+    panRef.current = next;
+    world.style.transition =
+      animate && !reduced ? "transform 0.55s cubic-bezier(0.23,1,0.32,1)" : "none";
+    world.style.transform = `translateX(${-next}px)`;
+    setPan({ left: next > 6, right: next < maxPanRef.current - 6 });
+  };
+
+  /** Size the sky to the frame height and keep the pan inside its bounds. */
   useEffect(() => {
-    const el = scrollerRef.current;
-    if (!el || interactive) return;
-    const centre = () => {
-      el.scrollLeft = (el.scrollWidth - el.clientWidth) / 2;
+    const vp = viewportRef.current;
+    if (!vp) return;
+    const measure = () => {
+      const w = Math.max(vp.clientWidth, vp.clientHeight * (SKY_W / SKY_H));
+      setSkyW(w);
+      maxPanRef.current = Math.max(0, w - vp.clientWidth);
+      applyPan(interactive ? panRef.current : maxPanRef.current / 2);
     };
-    centre();
-    window.addEventListener("resize", centre);
-    return () => window.removeEventListener("resize", centre);
+    measure();
+    const ro = new ResizeObserver(measure);
+    ro.observe(vp);
+    return () => ro.disconnect();
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [interactive, view]);
+
+  /** Trackpad / wheel: horizontal pans the sky, vertical scrolls the page. */
+  useEffect(() => {
+    const root = rootRef.current;
+    if (!root || !interactive) return;
+    const onWheel = (e: WheelEvent) => {
+      if (Math.abs(e.deltaX) <= Math.abs(e.deltaY)) return; // let the page have it
+      e.preventDefault(); // and never let the browser read it as back/forward
+      applyPan(panRef.current + e.deltaX);
+    };
+    // On the root, so a horizontal swipe anywhere on this screen (over the
+    // rail or the proof panel too) is consumed rather than reaching the browser.
+    root.addEventListener("wheel", onWheel, { passive: false });
+    return () => root.removeEventListener("wheel", onWheel);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [interactive]);
 
   /** Pan the sky so a figure sits in the middle of the view. */
   const panToFigure = (bi: number) => {
-    const el = scrollerRef.current;
-    if (!el) return;
-    const scale = el.scrollWidth / SKY_W;
-    const target = BOXES[bi].cx * scale - el.clientWidth / 2;
-    el.scrollTo({
-      left: clamp(target, 0, el.scrollWidth - el.clientWidth),
-      behavior: reduced ? "auto" : "smooth",
-    });
+    const vp = viewportRef.current;
+    if (!vp || !skyW) return;
+    const scale = skyW / SKY_W;
+    applyPan(BOXES[bi].cx * scale - vp.clientWidth / 2, true);
   };
 
   const focusBranch = (bi: number, alsoPan: boolean) => {
@@ -260,27 +301,17 @@ export function SkillsPage({ reveal, interactive }: { reveal: number; interactiv
     if (alsoPan) panToFigure(bi);
   };
 
-  const onScroll = () => {
-    const el = scrollerRef.current;
-    if (!el) return;
-    const max = el.scrollWidth - el.clientWidth;
-    setPan({ left: el.scrollLeft > 6, right: el.scrollLeft < max - 6 });
-  };
-
   const onPointerDown = (e: React.PointerEvent) => {
     if (!interactive || e.button !== 0) return;
-    const el = scrollerRef.current;
-    if (!el) return;
-    dragRef.current = { startX: e.clientX, startLeft: el.scrollLeft, moved: false };
+    dragRef.current = { startX: e.clientX, startPan: panRef.current, moved: false };
     (e.target as Element).setPointerCapture?.(e.pointerId);
   };
   const onPointerMove = (e: React.PointerEvent) => {
     const d = dragRef.current;
-    const el = scrollerRef.current;
-    if (!d || !el) return;
+    if (!d) return;
     const dx = e.clientX - d.startX;
     if (Math.abs(dx) > 6) d.moved = true;
-    el.scrollLeft = d.startLeft - dx;
+    applyPan(d.startPan - dx);
   };
   const endDrag = () => {
     // Cleared next tick so the click that follows a drag is ignored.
@@ -290,6 +321,19 @@ export function SkillsPage({ reveal, interactive }: { reveal: number; interactiv
   };
   const wasDrag = () => dragRef.current?.moved ?? false;
 
+  /** Arrow keys nudge the sky when it has focus. */
+  const onKeyDown = (e: React.KeyboardEvent) => {
+    if (!interactive) return;
+    const step = viewportRef.current ? viewportRef.current.clientWidth * 0.6 : 400;
+    if (e.key === "ArrowRight") {
+      e.preventDefault();
+      applyPan(panRef.current + step, true);
+    } else if (e.key === "ArrowLeft") {
+      e.preventDefault();
+      applyPan(panRef.current - step, true);
+    }
+  };
+
   /**
    * Select a star and park the proof panel clear of it: the panel goes to the
    * opposite side of the view, and only flips left when there is room beside
@@ -298,12 +342,11 @@ export function SkillsPage({ reveal, interactive }: { reveal: number; interactiv
   const selectStar = (n: StarPos) => {
     setFocusId(n.branch.id);
     setSel(n);
-    const el = scrollerRef.current;
-    if (!el) return;
-    const scale = el.scrollWidth / SKY_W;
-    const screenX = n.x * scale - el.scrollLeft;
-    const roomForLeft = el.clientWidth > RAIL_CLEAR + PANEL_W + 40;
-    setPanelSide(screenX > el.clientWidth * 0.52 && roomForLeft ? "left" : "right");
+    const vp = viewportRef.current;
+    if (!vp || !skyW) return;
+    const screenX = n.x * (skyW / SKY_W) - panRef.current;
+    const roomForLeft = vp.clientWidth > RAIL_CLEAR + PANEL_W + 40;
+    setPanelSide(screenX > vp.clientWidth * 0.52 && roomForLeft ? "left" : "right");
   };
 
   const starO = 0.45 + 0.55 * smooth(reveal, 0, 0.35);
@@ -319,6 +362,7 @@ export function SkillsPage({ reveal, interactive }: { reveal: number; interactiv
 
   return (
     <div
+      ref={rootRef}
       aria-hidden={reveal < 0.7}
       style={{
         position: "absolute",
@@ -346,8 +390,9 @@ export function SkillsPage({ reveal, interactive }: { reveal: number; interactiv
       ) : (
         <div style={{ position: "absolute", inset: 0, zIndex: 2 }}>
           <div
-            ref={scrollerRef}
-            onScroll={onScroll}
+            ref={viewportRef}
+            tabIndex={interactive ? 0 : -1}
+            onKeyDown={onKeyDown}
             onPointerDown={onPointerDown}
             onPointerMove={onPointerMove}
             onPointerUp={endDrag}
@@ -355,24 +400,20 @@ export function SkillsPage({ reveal, interactive }: { reveal: number; interactiv
             style={{
               position: "absolute",
               inset: 0,
-              overflowX: interactive ? "auto" : "hidden",
-              overflowY: "hidden",
-              // keep horizontal scroll inside the sky: without this the
-              // trackpad swipe chains to the browser's back/forward gesture
-              overscrollBehaviorX: "contain",
+              overflow: "hidden",
+              // vertical gestures still belong to the page
               touchAction: "pan-y",
-              scrollbarWidth: "none",
+              outline: "none",
               cursor: interactive ? "grab" : "default",
             }}
           >
+            <div
+              ref={worldRef}
+              style={{ height: "100%", width: skyW || "100%", willChange: "transform" }}
+            >
             <svg
               viewBox={`0 0 ${SKY_W} ${SKY_H}`}
-              style={{
-                height: "100%",
-                minWidth: "100%",
-                aspectRatio: `${SKY_W} / ${SKY_H}`,
-                display: "block",
-              }}
+              style={{ height: "100%", width: "100%", display: "block" }}
               role="list"
               aria-label="Skill constellations"
             >
@@ -622,6 +663,7 @@ export function SkillsPage({ reveal, interactive }: { reveal: number; interactiv
                 );
               })}
             </svg>
+            </div>
           </div>
 
           {/* pan hints */}
