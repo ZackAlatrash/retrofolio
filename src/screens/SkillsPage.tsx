@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import {
   skillBranches,
   languages,
@@ -11,15 +11,18 @@ import { useReducedMotion } from "../motion/useReducedMotion";
 /**
  * The skill constellations as a night sky on the handheld OS. One component,
  * one dial: `reveal` (0..1).
- *   0    - backdrop: faint twinkling stars behind the About card
+ *   0    - backdrop: faint twinkling stars behind the About card (centered,
+ *          no panning)
  *   ->1  - the stars shine, constellation lines draw figure by figure, the
  *          names appear, then the OS chrome (tabs, proof panel, languages)
  *
- * The sky reads like a real star chart: each branch is a hand-drawn irregular
- * figure (a dragon chain, a W, a kite, an arc, a serpent, a crown) scattered
- * across the sky, stars are point cores with level-sized halos, and P1 burns
- * alone at the top as the pole star. Nothing is highlighted until a star is
- * hovered; leaving the sky clears the focus again.
+ * The sky is WIDER than the viewport (SKY_W x SKY_H world): once revealed it
+ * pans sideways by drag / trackpad / native horizontal scroll, like panning a
+ * game map. Vertical page scroll is never hijacked. Stars are point cores
+ * with level-sized halos; figures are hand-drawn irregular constellations;
+ * P1 burns alone as the pole star. Nothing highlights until hovered.
+ * `skyUrl` (a generated pixel-art night sky panorama) drops in as the
+ * backdrop art when Zack generates it; until then a gradient sky stands in.
  */
 
 const PIXEL = '"Press Start 2P", ui-monospace, monospace';
@@ -28,6 +31,10 @@ const smooth = (x: number, a: number, b: number) => {
   const t = Math.max(0, Math.min(1, (x - a) / (b - a)));
   return t * t * (3 - 2 * t);
 };
+
+/** The sky world, in SVG units. Wider than a viewport: it pans. */
+const SKY_W = 1900;
+const SKY_H = 740;
 
 type Anchor = "start" | "middle" | "end";
 /** [x, y, labelAnchor, labelDy] per star; label dx derives from the anchor. */
@@ -42,21 +49,21 @@ interface Figure {
 
 /**
  * Hand-authored constellation figures (order matches skillBranches, star
- * counts match each branch's skill count).
+ * counts match each branch's skill count), spread across the wide sky.
  */
 const FIGURES: Figure[] = [
   {
     // AI · RAG: a long dragon chain across the upper sky
     id: "ai",
     stars: [
-      [252, 190, "middle", 30],
-      [324, 148, "middle", -20],
-      [396, 136, "middle", 30],
-      [468, 152, "middle", -20],
-      [536, 120, "middle", 30],
-      [604, 140, "middle", -20],
-      [668, 110, "middle", -20],
-      [724, 134, "start", 5],
+      [430, 290, "end", 6],
+      [560, 225, "middle", -26],
+      [690, 205, "middle", 40],
+      [820, 230, "middle", -26],
+      [950, 180, "middle", 40],
+      [1075, 210, "middle", -26],
+      [1200, 165, "middle", -26],
+      [1310, 200, "start", 6],
     ],
     edges: [
       [0, 1],
@@ -67,18 +74,18 @@ const FIGURES: Figure[] = [
       [5, 6],
       [6, 7],
     ],
-    title: [488, 76, "middle"],
+    title: [860, 105, "middle"],
   },
   {
     // Architecture: a Cassiopeia W in the upper right
     id: "arch",
     stars: [
-      [596, 300, "end", 5],
-      [652, 254, "end", 5],
-      [708, 300, "middle", 26],
-      [764, 254, "middle", -16],
-      [820, 300, "middle", 26],
-      [866, 262, "end", -16],
+      [1450, 330, "end", 6],
+      [1530, 255, "end", -18],
+      [1610, 330, "middle", 40],
+      [1690, 255, "middle", -26],
+      [1770, 330, "middle", 40],
+      [1840, 268, "end", -26],
     ],
     edges: [
       [0, 1],
@@ -87,16 +94,16 @@ const FIGURES: Figure[] = [
       [3, 4],
       [4, 5],
     ],
-    title: [762, 218, "middle"],
+    title: [1655, 195, "middle"],
   },
   {
     // Testing: a kite (a southern cross) on the right
     id: "testing",
     stars: [
-      [700, 452, "end", 5],
-      [748, 408, "middle", -16],
-      [794, 464, "start", 5],
-      [748, 516, "middle", 26],
+      [1500, 520, "end", 6],
+      [1592, 445, "middle", -26],
+      [1672, 530, "start", 6],
+      [1592, 612, "middle", 40],
     ],
     edges: [
       [0, 1],
@@ -105,35 +112,35 @@ const FIGURES: Figure[] = [
       [3, 0],
       [1, 3],
     ],
-    title: [748, 372, "middle"],
+    title: [1592, 392, "middle"],
   },
   {
     // Cloud & DevOps: a low arc in the lower middle
     id: "cloud",
     stars: [
-      [508, 610, "end", 5],
-      [562, 646, "middle", 27],
-      [620, 634, "middle", -16],
-      [670, 670, "start", 5],
+      [960, 618, "end", -18],
+      [1062, 664, "middle", 42],
+      [1172, 648, "middle", -26],
+      [1268, 690, "start", 6],
     ],
     edges: [
       [0, 1],
       [1, 2],
       [2, 3],
     ],
-    title: [586, 588, "middle"],
+    title: [1112, 580, "middle"],
   },
   {
     // Backend & Data: a serpent winding along the lower left
     id: "backend",
     stars: [
-      [120, 500, "middle", -16],
-      [178, 534, "middle", 27],
-      [236, 514, "middle", -16],
-      [292, 548, "middle", 27],
-      [346, 532, "middle", -16],
-      [396, 572, "middle", 27],
-      [448, 556, "start", 5],
+      [180, 560, "middle", -26],
+      [292, 606, "middle", 42],
+      [402, 580, "middle", -26],
+      [512, 622, "middle", 42],
+      [616, 600, "middle", -26],
+      [716, 646, "middle", 42],
+      [820, 624, "start", 6],
     ],
     edges: [
       [0, 1],
@@ -143,18 +150,18 @@ const FIGURES: Figure[] = [
       [4, 5],
       [5, 6],
     ],
-    title: [284, 468, "middle"],
+    title: [500, 518, "middle"],
   },
   {
     // Frontend & Mobile: a crown arc on the left
     id: "frontend",
     stars: [
-      [138, 336, "middle", 27],
-      [182, 294, "middle", -16],
-      [238, 280, "middle", -16],
-      [294, 298, "middle", -16],
-      [338, 334, "start", 5],
-      [362, 382, "start", 5],
+      [160, 462, "middle", 42],
+      [242, 404, "middle", -26],
+      [352, 384, "middle", -26],
+      [462, 408, "middle", -26],
+      [542, 462, "start", 6],
+      [584, 522, "start", 6],
     ],
     edges: [
       [0, 1],
@@ -163,11 +170,11 @@ const FIGURES: Figure[] = [
       [3, 4],
       [4, 5],
     ],
-    title: [250, 244, "middle"],
+    title: [370, 344, "middle"],
   },
 ];
 
-const POLE = { x: 140, y: 90 };
+const POLE = { x: 200, y: 105 };
 
 interface StarPos {
   branch: SkillBranch;
@@ -189,10 +196,10 @@ skillBranches.forEach((branch, bi) => {
 });
 
 /** Fixed decorative dust stars (deterministic pseudo-random spread). */
-const DUST_STARS = Array.from({ length: 54 }, (_, i) => ({
-  x: 24 + ((i * 167 + 61) % 852),
-  y: 14 + ((i * 211 + 97) % 700),
-  r: 0.6 + (i % 3) * 0.4,
+const DUST_STARS = Array.from({ length: 110 }, (_, i) => ({
+  x: 24 + ((i * 271 + 61) % (SKY_W - 48)),
+  y: 14 + ((i * 211 + 97) % (SKY_H - 40)),
+  r: 0.6 + (i % 3) * 0.45,
   delay: `${((i * 0.37) % 3.4).toFixed(2)}s`,
 }));
 
@@ -200,6 +207,53 @@ export function SkillsPage({ reveal, interactive }: { reveal: number; interactiv
   const reduced = useReducedMotion();
   const [sel, setSel] = useState<StarPos | null>(null);
   const active = interactive ? sel : null;
+
+  const scrollerRef = useRef<HTMLDivElement>(null);
+  const dragRef = useRef<{ startX: number; startLeft: number; moved: boolean } | null>(null);
+  const [pan, setPan] = useState({ left: false, right: true });
+
+  // Backdrop mode stays centered; when the page becomes interactive the user
+  // takes over from wherever the centre was.
+  useEffect(() => {
+    const el = scrollerRef.current;
+    if (!el || interactive) return;
+    const centre = () => {
+      el.scrollLeft = (el.scrollWidth - el.clientWidth) / 2;
+    };
+    centre();
+    window.addEventListener("resize", centre);
+    return () => window.removeEventListener("resize", centre);
+  }, [interactive]);
+
+  const onScroll = () => {
+    const el = scrollerRef.current;
+    if (!el) return;
+    const max = el.scrollWidth - el.clientWidth;
+    setPan({ left: el.scrollLeft > 6, right: el.scrollLeft < max - 6 });
+  };
+
+  const onPointerDown = (e: React.PointerEvent) => {
+    if (!interactive || e.button !== 0) return;
+    const el = scrollerRef.current;
+    if (!el) return;
+    dragRef.current = { startX: e.clientX, startLeft: el.scrollLeft, moved: false };
+    (e.target as Element).setPointerCapture?.(e.pointerId);
+  };
+  const onPointerMove = (e: React.PointerEvent) => {
+    const d = dragRef.current;
+    const el = scrollerRef.current;
+    if (!d || !el) return;
+    const dx = e.clientX - d.startX;
+    if (Math.abs(dx) > 6) d.moved = true;
+    el.scrollLeft = d.startLeft - dx;
+  };
+  const endDrag = () => {
+    // Cleared on the next tick so the click that follows a drag is ignored.
+    window.setTimeout(() => {
+      dragRef.current = null;
+    }, 0);
+  };
+  const wasDrag = () => dragRef.current?.moved ?? false;
 
   const starO = 0.45 + 0.55 * smooth(reveal, 0, 0.35);
   const titleO = smooth(reveal, 0.45, 0.62);
@@ -222,17 +276,6 @@ export function SkillsPage({ reveal, interactive }: { reveal: number; interactiv
         flexDirection: "column",
       }}
     >
-      {/* faint nebulae */}
-      <div
-        aria-hidden="true"
-        style={{
-          position: "absolute",
-          inset: 0,
-          background:
-            "radial-gradient(42% 34% at 72% 26%, rgba(187,154,247,0.10), transparent 70%), radial-gradient(36% 30% at 22% 68%, rgba(122,162,247,0.09), transparent 70%)",
-        }}
-      />
-
       {/* OS chrome: tab strip */}
       <div
         style={{
@@ -242,7 +285,7 @@ export function SkillsPage({ reveal, interactive }: { reveal: number; interactiv
           gap: 26,
           paddingTop: 72,
           position: "relative",
-          zIndex: 2,
+          zIndex: 3,
           opacity: chromeO,
         }}
       >
@@ -270,245 +313,315 @@ export function SkillsPage({ reveal, interactive }: { reveal: number; interactiv
           letterSpacing: 1.5,
           color: "#68719c",
           position: "relative",
-          zIndex: 2,
+          zIndex: 3,
           opacity: chromeO,
         }}
       >
-        {STARS.length} ABILITIES · LEVELS = SHIPPED USES · SELECT A STAR FOR PROOF
+        {STARS.length} ABILITIES · LEVELS = SHIPPED USES · DRAG THE SKY · SELECT A STAR FOR
+        PROOF
       </div>
 
-      {/* the sky + proof panel; leaving it clears the focus */}
-      <div
-        onMouseLeave={() => setSel(null)}
-        style={{
-          flex: 1,
-          display: "flex",
-          alignItems: "stretch",
-          justifyContent: "center",
-          gap: 8,
-          padding: "0 18px 10px",
-          position: "relative",
-          zIndex: 2,
-          minHeight: 0,
-        }}
-      >
-        <svg
-          viewBox="0 0 900 740"
-          style={{ flex: 1, maxWidth: 950, height: "100%", minHeight: 460 }}
-          role="list"
-          aria-label="Skill constellations"
+      {/* the pannable sky */}
+      <div style={{ flex: 1, position: "relative", minHeight: 0, zIndex: 2 }}>
+        <div
+          ref={scrollerRef}
+          onScroll={onScroll}
+          onMouseLeave={() => setSel(null)}
+          onPointerDown={onPointerDown}
+          onPointerMove={onPointerMove}
+          onPointerUp={endDrag}
+          onPointerCancel={endDrag}
+          style={{
+            position: "absolute",
+            inset: 0,
+            overflowX: interactive ? "auto" : "hidden",
+            overflowY: "hidden",
+            scrollbarWidth: "none",
+            cursor: interactive ? "grab" : "default",
+          }}
         >
-          <defs>
-            {skillBranches.map((b) => (
-              <radialGradient key={b.id} id={`halo-${b.id}`}>
-                <stop offset="0%" stopColor={b.color} stopOpacity={0.85} />
-                <stop offset="45%" stopColor={b.color} stopOpacity={0.28} />
-                <stop offset="100%" stopColor={b.color} stopOpacity={0} />
+          <svg
+            viewBox={`0 0 ${SKY_W} ${SKY_H}`}
+            style={{ height: "100%", aspectRatio: `${SKY_W} / ${SKY_H}`, display: "block" }}
+            role="list"
+            aria-label="Skill constellations"
+          >
+            <defs>
+              {skillBranches.map((b) => (
+                <radialGradient key={b.id} id={`halo-${b.id}`}>
+                  <stop offset="0%" stopColor={b.color} stopOpacity={0.85} />
+                  <stop offset="45%" stopColor={b.color} stopOpacity={0.28} />
+                  <stop offset="100%" stopColor={b.color} stopOpacity={0} />
+                </radialGradient>
+              ))}
+              <radialGradient id="halo-pole">
+                <stop offset="0%" stopColor="#f4f4fb" stopOpacity={0.9} />
+                <stop offset="45%" stopColor="#8fb6ff" stopOpacity={0.3} />
+                <stop offset="100%" stopColor="#8fb6ff" stopOpacity={0} />
               </radialGradient>
+            </defs>
+
+            {/* nebulae over the sky world (replaced by Zack's generated art) */}
+            <rect
+              x={SKY_W * 0.52}
+              y={SKY_H * 0.05}
+              width={SKY_W * 0.42}
+              height={SKY_H * 0.5}
+              fill="url(#halo-frontend)"
+              opacity={0.06}
+            />
+            <rect
+              x={SKY_W * 0.02}
+              y={SKY_H * 0.45}
+              width={SKY_W * 0.4}
+              height={SKY_H * 0.5}
+              fill="url(#halo-cloud)"
+              opacity={0.06}
+            />
+
+            {/* dust stars: always in the sky */}
+            {DUST_STARS.map((d, i) => (
+              <circle
+                key={i}
+                className={reduced ? undefined : "sky-star"}
+                cx={d.x}
+                cy={d.y}
+                r={d.r}
+                fill="#cfe0ff"
+                opacity={0.3}
+                style={{ animationDelay: d.delay }}
+              />
             ))}
-            <radialGradient id="halo-pole">
-              <stop offset="0%" stopColor="#f4f4fb" stopOpacity={0.9} />
-              <stop offset="45%" stopColor="#8fb6ff" stopOpacity={0.3} />
-              <stop offset="100%" stopColor="#8fb6ff" stopOpacity={0} />
-            </radialGradient>
-          </defs>
 
-          {/* dust stars: always in the sky */}
-          {DUST_STARS.map((d, i) => (
-            <circle
-              key={i}
-              className={reduced ? undefined : "sky-star"}
-              cx={d.x}
-              cy={d.y}
-              r={d.r}
-              fill="#cfe0ff"
-              opacity={0.3}
-              style={{ animationDelay: d.delay }}
-            />
-          ))}
-
-          {/* P1: the pole star, alone at the top of the sky */}
-          <g opacity={starO}>
-            <circle cx={POLE.x} cy={POLE.y} r={26} fill="url(#halo-pole)" />
-            <circle cx={POLE.x} cy={POLE.y} r={2.6} fill="#ffffff" />
-            <line
-              x1={POLE.x - 13}
-              x2={POLE.x + 13}
-              y1={POLE.y}
-              y2={POLE.y}
-              stroke="#eef2ff"
-              strokeWidth={0.8}
-              opacity={0.6}
-            />
-            <line
-              x1={POLE.x}
-              x2={POLE.x}
-              y1={POLE.y - 13}
-              y2={POLE.y + 13}
-              stroke="#eef2ff"
-              strokeWidth={0.8}
-              opacity={0.6}
-            />
-            <text
-              x={POLE.x}
-              y={POLE.y + 40}
-              textAnchor="middle"
-              style={{ fontFamily: PIXEL, fontSize: 8, fill: "#8fb6ff", opacity: titleO }}
-            >
-              P1
-            </text>
-          </g>
-
-          {/* constellation lines: draw on figure by figure */}
-          {FIGURES.map((fig, bi) => {
-            const branch = skillBranches[bi];
-            return fig.edges.map(([a, b], ei) => {
-              const lineP = smooth(
-                reveal,
-                0.14 + bi * 0.05 + ei * 0.03,
-                0.42 + bi * 0.05 + ei * 0.03,
-              );
-              const [x1, y1] = fig.stars[a];
-              const [x2, y2] = fig.stars[b];
-              return (
-                <line
-                  key={`${fig.id}-${ei}`}
-                  x1={x1}
-                  y1={y1}
-                  x2={x2}
-                  y2={y2}
-                  stroke={branch.color}
-                  strokeOpacity={0.4 * lineP * dim(branch)}
-                  strokeWidth={1.1}
-                  pathLength={1}
-                  strokeDasharray={1}
-                  strokeDashoffset={1 - lineP}
-                />
-              );
-            });
-          })}
-
-          {/* constellation names */}
-          {FIGURES.map((fig, bi) => {
-            const branch = skillBranches[bi];
-            return (
+            {/* P1: the pole star, alone in the upper sky */}
+            <g opacity={starO}>
+              <circle cx={POLE.x} cy={POLE.y} r={34} fill="url(#halo-pole)" />
+              <circle cx={POLE.x} cy={POLE.y} r={3.2} fill="#ffffff" />
+              <line
+                x1={POLE.x - 17}
+                x2={POLE.x + 17}
+                y1={POLE.y}
+                y2={POLE.y}
+                stroke="#eef2ff"
+                strokeWidth={0.9}
+                opacity={0.6}
+              />
+              <line
+                x1={POLE.x}
+                x2={POLE.x}
+                y1={POLE.y - 17}
+                y2={POLE.y + 17}
+                stroke="#eef2ff"
+                strokeWidth={0.9}
+                opacity={0.6}
+              />
               <text
-                key={fig.id}
-                x={fig.title[0]}
-                y={fig.title[1]}
-                textAnchor={fig.title[2]}
-                style={{
-                  fontFamily: PIXEL,
-                  fontSize: 9.5,
-                  fill: branch.color,
-                  opacity: titleO * dim(branch),
-                  letterSpacing: 1,
-                }}
+                x={POLE.x}
+                y={POLE.y + 52}
+                textAnchor="middle"
+                style={{ fontFamily: PIXEL, fontSize: 10, fill: "#8fb6ff", opacity: titleO }}
               >
-                {branch.name}
+                P1
               </text>
-            );
-          })}
+            </g>
 
-          {/* the skill stars: point cores with level-sized halos */}
-          {STARS.map((n) => {
-            const lv = skillLevel(n.skill);
-            const isSel = active?.skill.id === n.skill.id;
-            const starReveal = smooth(reveal, 0.05 + n.bi * 0.04, 0.4 + n.bi * 0.04);
-            const halo = 9 + lv * 4.6;
-            const core = 1.7 + lv * 0.45;
-            const flare = lv >= 4 ? 8 + lv * 2 : 0;
-            const dx = n.anchor === "start" ? 14 : n.anchor === "end" ? -14 : 0;
-            return (
-              <g
-                key={`${n.branch.id}-${n.skill.id}`}
-                role="listitem"
-                tabIndex={interactive ? 0 : -1}
-                aria-label={`${n.skill.name}, level ${lv}`}
-                style={{
-                  cursor: interactive ? "pointer" : "default",
-                  outline: "none",
-                  opacity: dim(n.branch),
-                  pointerEvents: interactive ? "auto" : "none",
-                }}
-                onMouseEnter={() => interactive && setSel(n)}
-                onFocus={() => interactive && setSel(n)}
-                onBlur={() => interactive && setSel(null)}
-                onClick={() => interactive && setSel(n)}
-              >
-                {/* level halo (the glow IS the level) */}
-                <circle
-                  className={reduced || isSel ? undefined : "sky-star"}
-                  style={{ animationDelay: `${((n.x + n.y) % 3.4).toFixed(2)}s` }}
-                  cx={n.x}
-                  cy={n.y}
-                  r={halo * (0.8 + 0.2 * starReveal) * (isSel ? 1.25 : 1)}
-                  fill={`url(#halo-${n.branch.id})`}
-                  opacity={(0.4 + 0.12 * lv) * starO * (isSel ? 1.3 : 1)}
-                />
-                {/* diffraction flare on the brightest stars */}
-                {flare > 0 && (
-                  <g opacity={0.55 * starO * starReveal}>
-                    <line
-                      x1={n.x - flare}
-                      x2={n.x + flare}
-                      y1={n.y}
-                      y2={n.y}
-                      stroke="#eef2ff"
-                      strokeWidth={0.7}
-                    />
-                    <line
-                      x1={n.x}
-                      x2={n.x}
-                      y1={n.y - flare}
-                      y2={n.y + flare}
-                      stroke="#eef2ff"
-                      strokeWidth={0.7}
-                    />
-                  </g>
-                )}
-                {/* the star itself */}
-                <circle
-                  cx={n.x}
-                  cy={n.y}
-                  r={isSel ? core + 0.7 : core}
-                  fill={isSel ? "#ffffff" : "#eef2ff"}
-                />
-                {/* generous invisible hit area */}
-                <circle cx={n.x} cy={n.y} r={17} fill="transparent" />
+            {/* constellation lines: draw on figure by figure */}
+            {FIGURES.map((fig, bi) => {
+              const branch = skillBranches[bi];
+              return fig.edges.map(([a, b], ei) => {
+                const lineP = smooth(
+                  reveal,
+                  0.14 + bi * 0.05 + ei * 0.03,
+                  0.42 + bi * 0.05 + ei * 0.03,
+                );
+                const [x1, y1] = fig.stars[a];
+                const [x2, y2] = fig.stars[b];
+                return (
+                  <line
+                    key={`${fig.id}-${ei}`}
+                    x1={x1}
+                    y1={y1}
+                    x2={x2}
+                    y2={y2}
+                    stroke={branch.color}
+                    strokeOpacity={0.4 * lineP * dim(branch)}
+                    strokeWidth={1.3}
+                    pathLength={1}
+                    strokeDasharray={1}
+                    strokeDashoffset={1 - lineP}
+                  />
+                );
+              });
+            })}
+
+            {/* constellation names */}
+            {FIGURES.map((fig, bi) => {
+              const branch = skillBranches[bi];
+              return (
                 <text
-                  x={n.x + dx}
-                  y={n.y + n.dy}
-                  textAnchor={n.anchor}
-                  className="font-mono"
+                  key={fig.id}
+                  x={fig.title[0]}
+                  y={fig.title[1]}
+                  textAnchor={fig.title[2]}
                   style={{
-                    fontSize: 10.5,
-                    fill: isSel ? "#f4f4fb" : "#a6aed0",
-                    opacity: labelO,
-                    paintOrder: "stroke",
-                    stroke: "#0a0f21",
-                    strokeWidth: 3,
+                    fontFamily: PIXEL,
+                    fontSize: 13,
+                    fill: branch.color,
+                    opacity: titleO * dim(branch),
+                    letterSpacing: 1,
                   }}
                 >
-                  {n.skill.name}
+                  {branch.name}
                 </text>
-              </g>
-            );
-          })}
-        </svg>
+              );
+            })}
 
-        {/* proof panel */}
+            {/* the skill stars: point cores with level-sized halos */}
+            {STARS.map((n) => {
+              const lv = skillLevel(n.skill);
+              const isSel = active?.skill.id === n.skill.id;
+              const starReveal = smooth(reveal, 0.05 + n.bi * 0.04, 0.4 + n.bi * 0.04);
+              const halo = 12 + lv * 5.6;
+              const core = 2.1 + lv * 0.55;
+              const flare = lv >= 4 ? 11 + lv * 2.4 : 0;
+              const dx = n.anchor === "start" ? 18 : n.anchor === "end" ? -18 : 0;
+              return (
+                <g
+                  key={`${n.branch.id}-${n.skill.id}`}
+                  role="listitem"
+                  tabIndex={interactive ? 0 : -1}
+                  aria-label={`${n.skill.name}, level ${lv}`}
+                  style={{
+                    cursor: interactive ? "pointer" : "default",
+                    outline: "none",
+                    opacity: dim(n.branch),
+                    pointerEvents: interactive ? "auto" : "none",
+                  }}
+                  onMouseEnter={() => interactive && setSel(n)}
+                  onFocus={() => interactive && setSel(n)}
+                  onBlur={() => interactive && setSel(null)}
+                  onClick={() => interactive && !wasDrag() && setSel(n)}
+                >
+                  {/* level halo (the glow IS the level) */}
+                  <circle
+                    className={reduced || isSel ? undefined : "sky-star"}
+                    style={{ animationDelay: `${((n.x + n.y) % 3.4).toFixed(2)}s` }}
+                    cx={n.x}
+                    cy={n.y}
+                    r={halo * (0.8 + 0.2 * starReveal) * (isSel ? 1.25 : 1)}
+                    fill={`url(#halo-${n.branch.id})`}
+                    opacity={(0.4 + 0.12 * lv) * starO * (isSel ? 1.3 : 1)}
+                  />
+                  {/* diffraction flare on the brightest stars */}
+                  {flare > 0 && (
+                    <g opacity={0.55 * starO * starReveal}>
+                      <line
+                        x1={n.x - flare}
+                        x2={n.x + flare}
+                        y1={n.y}
+                        y2={n.y}
+                        stroke="#eef2ff"
+                        strokeWidth={0.8}
+                      />
+                      <line
+                        x1={n.x}
+                        x2={n.x}
+                        y1={n.y - flare}
+                        y2={n.y + flare}
+                        stroke="#eef2ff"
+                        strokeWidth={0.8}
+                      />
+                    </g>
+                  )}
+                  {/* the star itself */}
+                  <circle
+                    cx={n.x}
+                    cy={n.y}
+                    r={isSel ? core + 0.8 : core}
+                    fill={isSel ? "#ffffff" : "#eef2ff"}
+                  />
+                  {/* generous invisible hit area */}
+                  <circle cx={n.x} cy={n.y} r={24} fill="transparent" />
+                  <text
+                    x={n.x + dx}
+                    y={n.y + n.dy}
+                    textAnchor={n.anchor}
+                    className="font-mono"
+                    style={{
+                      fontSize: 13.5,
+                      fill: isSel ? "#f4f4fb" : "#aeb6d8",
+                      opacity: labelO,
+                      paintOrder: "stroke",
+                      stroke: "#0a0f21",
+                      strokeWidth: 3.5,
+                    }}
+                  >
+                    {n.skill.name}
+                  </text>
+                </g>
+              );
+            })}
+          </svg>
+        </div>
+
+        {/* pan hints at the sky's edges */}
+        {interactive && (
+          <>
+            <div
+              aria-hidden="true"
+              style={{
+                position: "absolute",
+                left: 10,
+                top: "50%",
+                transform: "translateY(-50%)",
+                fontFamily: PIXEL,
+                fontSize: 15,
+                color: "#8fb6ff",
+                opacity: chromeO * (pan.left ? 0.85 : 0.12),
+                textShadow: "0 0 10px rgba(143,182,255,0.7)",
+                pointerEvents: "none",
+                transition: "opacity 0.25s ease",
+              }}
+            >
+              ◄
+            </div>
+            <div
+              aria-hidden="true"
+              style={{
+                position: "absolute",
+                right: 10,
+                top: "50%",
+                transform: "translateY(-50%)",
+                fontFamily: PIXEL,
+                fontSize: 15,
+                color: "#8fb6ff",
+                opacity: chromeO * (pan.right ? 0.85 : 0.12),
+                textShadow: "0 0 10px rgba(143,182,247,0.7)",
+                pointerEvents: "none",
+                transition: "opacity 0.25s ease",
+              }}
+            >
+              ►
+            </div>
+          </>
+        )}
+
+        {/* proof panel: floats over the sky; compact while idle so it does not
+            cover the stars, full when a star is selected */}
         <div
           style={{
-            width: 316,
-            alignSelf: "center",
+            position: "absolute",
+            right: 16,
+            ...(active
+              ? { top: "50%", transform: "translateY(-50%)", width: 316, minHeight: 240 }
+              : { bottom: 14, width: 252 }),
             border: "1px solid rgba(122,162,247,0.28)",
             borderRadius: 10,
-            background: "rgba(10,16,32,0.82)",
-            padding: "16px 17px",
-            minHeight: 240,
+            background: active ? "rgba(10,16,32,0.9)" : "rgba(10,16,32,0.66)",
+            padding: active ? "16px 17px" : "10px 13px",
             opacity: chromeO,
-            pointerEvents: interactive ? "auto" : "none",
+            pointerEvents: interactive && active ? "auto" : "none",
+            zIndex: 3,
           }}
         >
           {active ? (
@@ -603,10 +716,9 @@ export function SkillsPage({ reveal, interactive }: { reveal: number; interactiv
             <div
               className="font-mono"
               style={{
-                fontSize: 11.5,
+                fontSize: 10.5,
                 lineHeight: 1.7,
-                color: "#68719c",
-                paddingTop: 44,
+                color: "#7b83a8",
                 textAlign: "center",
               }}
             >
@@ -624,7 +736,7 @@ export function SkillsPage({ reveal, interactive }: { reveal: number; interactiv
       <div
         style={{
           position: "relative",
-          zIndex: 2,
+          zIndex: 3,
           display: "flex",
           alignItems: "center",
           justifyContent: "center",
