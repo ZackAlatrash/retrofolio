@@ -375,6 +375,51 @@ export function SkillsPage({ reveal, interactive }: { reveal: number; interactiv
         backgroundPosition: "center",
       }}
     >
+      {/* a soft scrim so the badge (and the HUD above it) stay readable
+          wherever the milky way happens to sit */}
+      <div
+        aria-hidden="true"
+        style={{
+          position: "absolute",
+          top: 0,
+          left: 0,
+          right: 0,
+          height: 150,
+          zIndex: 3,
+          pointerEvents: "none",
+          background:
+            "linear-gradient(to bottom, rgba(5,8,26,0.88), rgba(5,8,26,0.5) 55%, transparent)",
+          opacity: chromeO,
+        }}
+      />
+
+      {/* what screen this is: the same stage badge the library screen wears */}
+      <div
+        style={{
+          position: "absolute",
+          top: 66,
+          left: 0,
+          right: 0,
+          textAlign: "center",
+          zIndex: 4,
+          opacity: chromeO,
+          pointerEvents: "none",
+        }}
+      >
+        <div
+          className="font-mono"
+          style={{ fontSize: 10.5, letterSpacing: 2, color: "var(--term-green)" }}
+        >
+          {"// STAGE 03 · SKILL CONSTELLATIONS"}
+        </div>
+        <div
+          className="font-mono"
+          style={{ fontSize: 10, letterSpacing: 0.6, color: "#9ba4ca", marginTop: 4 }}
+        >
+          every star is a skill · the brighter it burns, the more I have shipped with it
+        </div>
+      </div>
+
       {/* view switch: outside both views, so there is always a way back */}
       {interactive && (
         <div
