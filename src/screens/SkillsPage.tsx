@@ -852,8 +852,9 @@ export function SkillsPage({ reveal, interactive }: { reveal: number; interactiv
               borderRadius: 10,
               background: active ? "rgba(10,16,32,0.9)" : "rgba(10,16,32,0.66)",
               padding: active ? "16px 17px" : "10px 13px",
-              opacity: chromeO,
+              opacity: chromeO * (active || !focus ? 1 : 0),
               pointerEvents: interactive && active ? "auto" : "none",
+              transition: "opacity 0.2s ease",
               zIndex: 3,
             }}
           >

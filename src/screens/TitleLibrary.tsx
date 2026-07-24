@@ -1441,7 +1441,10 @@ export function TitleLibrary() {
             inset: 0,
             zIndex: 8,
             opacity: cardIn,
-            pointerEvents: "none",
+            // Transparent to input while it is only the backdrop behind the
+            // card; once the constellation is revealed the whole page (rail,
+            // panel, stars) has to be clickable.
+            pointerEvents: skillsP > 0.75 ? "auto" : "none",
           }}
         >
           <SkillsPage reveal={skillsP} interactive={skillsP > 0.75} />
