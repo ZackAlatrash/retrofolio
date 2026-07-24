@@ -5,13 +5,6 @@ import { AboutCard } from "./AboutCard";
 
 const PIXEL = '"Press Start 2P", ui-monospace, monospace';
 
-type BgMode = "room" | "grid";
-const INITIAL_BG: BgMode =
-  typeof window !== "undefined" &&
-  new URLSearchParams(window.location.search).get("aboutbg") === "grid"
-    ? "grid"
-    : "room";
-
 /**
  * Screen 2 - PLAYER 01 (About) as a standalone page section. Superseded by the
  * world camera move (the card resolves inside the handheld) once that lands;
@@ -22,7 +15,6 @@ export function AboutScreen() {
   const ref = useRef<HTMLElement>(null);
   const [visible, setVisible] = useState(reduced);
   const [play, setPlay] = useState(reduced);
-  const [bg, setBg] = useState<BgMode>(INITIAL_BG);
 
   // Reveal on scroll into view (once).
   useEffect(() => {
@@ -71,29 +63,7 @@ export function AboutScreen() {
         overflow: "hidden",
       }}
     >
-      <AboutBackground mode={bg} />
-
-      {/* temporary compare toggle */}
-      <div style={{ position: "absolute", top: 88, right: 22, zIndex: 6, display: "flex", gap: 6 }}>
-        {(["room", "grid"] as BgMode[]).map((m) => (
-          <button
-            key={m}
-            onClick={() => setBg(m)}
-            style={{
-              fontFamily: PIXEL,
-              fontSize: 8,
-              padding: "6px 9px",
-              borderRadius: 6,
-              cursor: "pointer",
-              color: bg === m ? "#0a0d18" : "#8fb6ff",
-              background: bg === m ? "#8fb6ff" : "rgba(10,14,26,0.7)",
-              border: "1px solid rgba(122,162,247,0.4)",
-            }}
-          >
-            {m.toUpperCase()}
-          </button>
-        ))}
-      </div>
+      <AboutBackground mode="room" />
 
       <div style={{ width: "min(1060px, 100%)", position: "relative", zIndex: 1 }}>
         {/* level strip */}

@@ -15,16 +15,21 @@ import {
   tvUrl,
   consoleUrl,
   roomUrl,
+  handheldUrl,
+  HANDHELD_SCREEN,
 } from "../showcase/showcaseData";
 import {
   CONTAINER_VH,
   SCRUB_VH,
   PULL_VH,
+  REST_VH,
   S1,
   S2,
+  S3,
   clamp01,
   smooth,
 } from "../showcase/sequence";
+import { AboutCard } from "./AboutCard";
 import { DetailOverlay, SplashCard } from "../showcase/DetailOverlay";
 import {
   IDLE_FLOW,
@@ -122,6 +127,36 @@ export function TitleLibrary() {
   const seatCloneRef = useRef<HTMLElement | null>(null);
   const visitedRef = useRef<Set<string>>(new Set());
   const worldRef = useRef<HTMLDivElement>(null);
+  // The handheld's screen: the About camera pushes into this exact rect.
+  const handheldScreenRef = useRef<HTMLDivElement>(null);
+  const aboutBaseRef = useRef<{
+    key: string;
+    cx: number;
+    cy: number;
+    scale: number;
+  } | null>(null);
+  // Bumped when the handheld art loads, so the camera re-measures its screen
+  // (a first measurement before load would size it at zero).
+  const [assetTick, setAssetTick] = useState(0);
+  // The card is shown inside a pinned viewport, so scale it to always fit.
+  const cardWrapRef = useRef<HTMLDivElement>(null);
+  const [cardScale, setCardScale] = useState(1);
+  useEffect(() => {
+    const el = cardWrapRef.current;
+    if (!el) return;
+    const fit = () => {
+      const avail = window.innerHeight - 96;
+      const h = el.scrollHeight;
+      setCardScale(h > avail ? Math.max(0.55, avail / h) : 1);
+    };
+    fit();
+    const id = window.setTimeout(fit, 600); // after webfonts settle
+    window.addEventListener("resize", fit);
+    return () => {
+      window.clearTimeout(id);
+      window.removeEventListener("resize", fit);
+    };
+  }, []);
   const stageRef = useRef<HTMLDivElement>(null);
   const flyRef = useRef<HTMLDivElement>(null);
   const glassRef = useRef<HTMLDivElement>(null);
@@ -188,6 +223,8 @@ export function TitleLibrary() {
       const pr = total > 0 ? clamp01(-top / total) : 0;
       const tt = clamp01((pr - S1) / (S2 - S1));
       if (tt < 0.9) return;
+      // Once the About camera has engaged the shelf is no longer the subject.
+      if (pr > S3 + 0.01) return;
     }
     const fast = visitedRef.current.has(id);
     visitedRef.current.add(id);
@@ -558,11 +595,64 @@ export function TitleLibrary() {
     };
   }, [reduced, forcedSeq]);
 
+  // ---- the About camera ----
+  // Past the station rest the camera keeps going, pushing the whole world into
+  // the handheld's screen until it fills the frame. Measured once per viewport
+  // with the transform cleared, then driven straight off scroll progress.
+  useEffect(() => {
+    if (reduced) return;
+    const world = worldRef.current;
+    if (!world) return;
+    const aP = clamp01((p - S3) / (1 - S3));
+    // Never fight the cartridge dive.
+    if (flowRef.current.phase !== "shelf") return;
+    if (aP <= 0.001) {
+      if (world.dataset.aboutCam === "1") {
+        world.style.transform = "";
+        world.style.transformOrigin = "";
+        world.dataset.aboutCam = "0";
+      }
+      return;
+    }
+    const screen = handheldScreenRef.current;
+    if (!screen) return;
+    const key = `${window.innerWidth}x${window.innerHeight}`;
+    let base = aboutBaseRef.current;
+    if (!base || base.key !== key) {
+      const prev = world.style.transform;
+      world.style.transform = "";
+      const r = screen.getBoundingClientRect();
+      world.style.transform = prev;
+      // Layout not settled yet (fonts/art still loading): retry next frame
+      // rather than caching a collapsed rect.
+      if (!r.width || !r.height) {
+        const again = requestAnimationFrame(() => setAssetTick((n) => n + 1));
+        return () => cancelAnimationFrame(again);
+      }
+      base = {
+        key,
+        cx: r.left + r.width / 2,
+        cy: r.top + r.height / 2,
+        scale: Math.max(window.innerWidth / r.width, window.innerHeight / r.height) * 1.02,
+      };
+      aboutBaseRef.current = base;
+    }
+    const e = smooth(clamp01(aP / 0.72), 0, 1);
+    world.style.transformOrigin = `${base.cx}px ${base.cy}px`;
+    world.style.transform = `scale(${1 + (base.scale - 1) * e})`;
+    world.dataset.aboutCam = "1";
+  }, [p, reduced, assetTick, W, H]);
+
   if (reduced) return <ReducedTitleLibrary lang={lang} />;
 
   const scrubP = clamp01(p / S1);
   // Raw pull progress 0..1 drives the power-cycle phases.
   const t = clamp01((p - S1) / (S2 - S1));
+
+  // ---- the About camera: keeps pushing down into the handheld ----
+  const aboutP = clamp01((p - S3) / (1 - S3));
+  const camP = smooth(clamp01(aboutP / 0.72), 0, 1); // camera, then the card rests
+  const cardIn = smooth(clamp01((aboutP - 0.42) / 0.3), 0, 1);
 
   // ---- the CRT death (on the full-screen picture) ----
   const collapse = smooth(t, 0, 0.2); // vertical squeeze into a line
@@ -611,6 +701,17 @@ export function TitleLibrary() {
         style={{
           position: "absolute",
           top: `${SCRUB_VH + PULL_VH}vh`,
+          height: 1,
+          width: 1,
+        }}
+      />
+      {/* deep-link anchor: lands once the card has resolved in the handheld */}
+      <div
+        id="about"
+        aria-hidden="true"
+        style={{
+          position: "absolute",
+          top: `${SCRUB_VH + PULL_VH + REST_VH + 200}vh`,
           height: 1,
           width: 1,
         }}
@@ -853,6 +954,80 @@ export function TitleLibrary() {
                 borderBottom: "1px solid #0d0e18",
               }}
             />
+
+            {/* the handheld resting on the cabinet: the About camera dives in */}
+            <div style={{ position: "absolute", left: "5.5%", top: "13%", width: "16%", zIndex: 3 }}>
+              <div
+                aria-hidden="true"
+                style={{
+                  position: "absolute",
+                  left: "6%",
+                  right: "6%",
+                  bottom: "-5%",
+                  height: "13%",
+                  borderRadius: "50%",
+                  background:
+                    "radial-gradient(50% 50% at 50% 50%, rgba(0,0,0,0.65), transparent 75%)",
+                  filter: "blur(2px)",
+                }}
+              />
+              <img
+                src={handheldUrl}
+                alt=""
+                aria-hidden="true"
+                onLoad={() => setAssetTick((n) => n + 1)}
+                style={{ width: "100%", display: "block", imageRendering: "pixelated" }}
+              />
+              <div
+                ref={handheldScreenRef}
+                style={{
+                  position: "absolute",
+                  left: `${HANDHELD_SCREEN.left}%`,
+                  top: `${HANDHELD_SCREEN.top}%`,
+                  width: `${HANDHELD_SCREEN.width}%`,
+                  height: `${HANDHELD_SCREEN.height}%`,
+                  overflow: "hidden",
+                  background: `radial-gradient(90% 80% at 50% 40%, rgba(30,64,110,${(0.28 + 0.6 * camP).toFixed(3)}), rgba(8,14,28,0.96))`,
+                  display: "flex",
+                  alignItems: "center",
+                  justifyContent: "center",
+                }}
+              >
+                <span
+                  className="press-blink"
+                  style={{
+                    fontFamily: PIXEL,
+                    fontSize: "0.3vw",
+                    whiteSpace: "nowrap",
+                    color: "#8fb6ff",
+                    opacity: (1 - cardIn) * (0.4 + 0.6 * camP),
+                    textShadow: "0 0 6px rgba(143,182,255,0.8)",
+                  }}
+                >
+                  PLAYER 01
+                </span>
+                <div
+                  aria-hidden="true"
+                  style={{
+                    position: "absolute",
+                    inset: 0,
+                    background:
+                      "repeating-linear-gradient(rgba(0,0,0,0.22) 0 1px, transparent 1px 2px)",
+                  }}
+                />
+              </div>
+              <div
+                aria-hidden="true"
+                style={{
+                  position: "absolute",
+                  inset: "-10%",
+                  pointerEvents: "none",
+                  background:
+                    "radial-gradient(42% 38% at 50% 45%, rgba(122,162,247,0.35), transparent 70%)",
+                  opacity: 0.2 + 0.8 * camP,
+                }}
+              />
+            </div>
             {/* console bay */}
             <div
               style={{
@@ -1149,6 +1324,86 @@ export function TitleLibrary() {
           </div>
         )}
         </div>
+
+        {/* inside the handheld: the character card resolves as the camera lands */}
+        <div
+          aria-hidden={cardIn < 0.5}
+          style={{
+            position: "absolute",
+            inset: 0,
+            zIndex: 9,
+            opacity: cardIn,
+            pointerEvents: cardIn > 0.6 ? "auto" : "none",
+            display: "flex",
+            alignItems: "center",
+            justifyContent: "center",
+            padding: "20px",
+            background:
+              "radial-gradient(120% 90% at 50% 35%, #101733 0%, #070a16 62%, #05070c 100%)",
+          }}
+        >
+          <div
+            ref={cardWrapRef}
+            style={{
+              width: "min(1060px, 100%)",
+              transform: `scale(${cardScale})`,
+              transformOrigin: "center",
+            }}
+          >
+            <div
+              style={{
+                display: "flex",
+                alignItems: "center",
+                justifyContent: "space-between",
+                marginBottom: 14,
+              }}
+            >
+              <div
+                className="font-mono"
+                style={{ fontSize: 11, letterSpacing: 2, color: "var(--term-green)" }}
+              >
+                {"// PLAYER 01 · ABOUT"}
+              </div>
+              <div
+                style={{
+                  fontFamily: PIXEL,
+                  fontSize: 9,
+                  color: "#8fb6ff",
+                  display: "flex",
+                  alignItems: "center",
+                  gap: 8,
+                }}
+              >
+                <span
+                  style={{
+                    width: 8,
+                    height: 8,
+                    borderRadius: "50%",
+                    background: "var(--term-green)",
+                    boxShadow: "0 0 8px var(--term-green)",
+                    display: "inline-block",
+                  }}
+                />
+                AVAILABLE FROM SUMMER 2026
+              </div>
+            </div>
+            <AboutCard visible={cardIn > 0.35} play={cardIn > 0.35} />
+          </div>
+        </div>
+
+        {/* still inside the little screen: keep its glow at the edges */}
+        <div
+          aria-hidden="true"
+          style={{
+            position: "absolute",
+            inset: 0,
+            zIndex: 10,
+            pointerEvents: "none",
+            opacity: cardIn,
+            background:
+              "radial-gradient(125% 95% at 50% 45%, transparent 54%, rgba(20,44,90,0.55) 100%)",
+          }}
+        />
 
         {/* flying cartridges live above the world */}
         <div ref={flyRef} aria-hidden="true" />

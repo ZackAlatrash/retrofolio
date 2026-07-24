@@ -10,8 +10,13 @@
 export const SCRUB_VH = 220;
 export const PULL_VH = 130;
 export const REST_VH = 70;
+/**
+ * about: the camera keeps going, pushing down into the handheld sitting on the
+ * cabinet until its screen fills the frame and the character card resolves.
+ */
+export const ABOUT_VH = 280;
 
-export const SCROLLABLE_VH = SCRUB_VH + PULL_VH + REST_VH;
+export const SCROLLABLE_VH = SCRUB_VH + PULL_VH + REST_VH + ABOUT_VH;
 /** Total container height (sticky viewport included). */
 export const CONTAINER_VH = SCROLLABLE_VH + 100;
 
@@ -19,6 +24,8 @@ export const CONTAINER_VH = SCROLLABLE_VH + 100;
 export const S1 = SCRUB_VH / SCROLLABLE_VH;
 /** Fraction where the pull-back completes. */
 export const S2 = (SCRUB_VH + PULL_VH) / SCROLLABLE_VH;
+/** Fraction where the station rest ends and the About camera begins. */
+export const S3 = (SCRUB_VH + PULL_VH + REST_VH) / SCROLLABLE_VH;
 
 export const clamp01 = (x: number) => Math.max(0, Math.min(1, x));
 export const smooth = (x: number, a: number, b: number) => {

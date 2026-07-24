@@ -1,15 +1,11 @@
 import { TitleLibrary } from "../screens/TitleLibrary";
 import { AboutScreen } from "../screens/AboutScreen";
-import { WorldTravel } from "../screens/WorldTravel";
 import { GameNav } from "./GameNav";
 import { HelpWidget } from "./HelpWidget";
 import { CrtOverlay } from "./CrtOverlay";
 import { useGameRoute } from "./useGameRoute";
+import { useReducedMotion } from "../motion/useReducedMotion";
 
-const DEMO =
-  typeof window !== "undefined"
-    ? new URLSearchParams(window.location.search).get("demo")
-    : null;
 
 /**
  * The retro-game shell: the fused Title + Game Library sequence (one continuous
@@ -18,12 +14,13 @@ const DEMO =
  */
 export function GameShell() {
   const { reveal, morph, active } = useGameRoute();
-  // Prototype: the "camera travels one world" direction, rendered solo.
-  if (DEMO === "world") return <WorldTravel />;
+  const reducedMotion = useReducedMotion();
   return (
     <>
       <TitleLibrary />
-      <AboutScreen />
+      {/* Under reduced motion the camera move is skipped, so the card needs a
+          plain section; otherwise it resolves inside the handheld. */}
+      {reducedMotion && <AboutScreen />}
       <Stub id="skills" n={4} title="SKILL TREE" note="skills screen" />
       <Stub id="patch" n={5} title="PATCH NOTES" note="dev log" />
       <Stub id="contact" n={6} title="CREDITS" note="contact screen" />
