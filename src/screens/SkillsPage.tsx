@@ -9,13 +9,17 @@ import {
 import { useReducedMotion } from "../motion/useReducedMotion";
 
 /**
- * The skill constellation as a night sky on the handheld OS. One component,
+ * The skill constellations as a night sky on the handheld OS. One component,
  * one dial: `reveal` (0..1).
  *   0    - backdrop: faint twinkling stars behind the About card
- *   ->1  - the stars shine, constellation lines draw branch by branch, the
+ *   ->1  - the stars shine, constellation lines draw figure by figure, the
  *          names appear, then the OS chrome (tabs, proof panel, languages)
- * At reveal 1 it is the interactive SKILLS page: hovering a star focuses its
- * branch and opens the proof panel with deep links to the proving cartridges.
+ *
+ * The sky reads like a real star chart: each branch is a hand-drawn irregular
+ * figure (a dragon chain, a W, a kite, an arc, a serpent, a crown) scattered
+ * across the sky, stars are point cores with level-sized halos, and P1 burns
+ * alone at the top as the pole star. Nothing is highlighted until a star is
+ * hovered; leaving the sky clears the focus again.
  */
 
 const PIXEL = '"Press Start 2P", ui-monospace, monospace';
@@ -25,12 +29,145 @@ const smooth = (x: number, a: number, b: number) => {
   return t * t * (3 - 2 * t);
 };
 
-const CX = 450;
-const CY = 380;
-const R0 = 82;
-const STEP = 42;
-/** Branch angles in degrees; -90 is straight up. Order matches skillBranches. */
-const ANGLES = [-90, -34, 34, 90, 146, 214];
+type Anchor = "start" | "middle" | "end";
+/** [x, y, labelAnchor, labelDy] per star; label dx derives from the anchor. */
+type StarSpec = [number, number, Anchor, number];
+
+interface Figure {
+  id: string;
+  stars: StarSpec[];
+  edges: [number, number][];
+  title: [number, number, Anchor];
+}
+
+/**
+ * Hand-authored constellation figures (order matches skillBranches, star
+ * counts match each branch's skill count).
+ */
+const FIGURES: Figure[] = [
+  {
+    // AI · RAG: a long dragon chain across the upper sky
+    id: "ai",
+    stars: [
+      [252, 190, "middle", 30],
+      [324, 148, "middle", -20],
+      [396, 136, "middle", 30],
+      [468, 152, "middle", -20],
+      [536, 120, "middle", 30],
+      [604, 140, "middle", -20],
+      [668, 110, "middle", -20],
+      [724, 134, "start", 5],
+    ],
+    edges: [
+      [0, 1],
+      [1, 2],
+      [2, 3],
+      [3, 4],
+      [4, 5],
+      [5, 6],
+      [6, 7],
+    ],
+    title: [488, 76, "middle"],
+  },
+  {
+    // Architecture: a Cassiopeia W in the upper right
+    id: "arch",
+    stars: [
+      [596, 300, "end", 5],
+      [652, 254, "end", 5],
+      [708, 300, "middle", 26],
+      [764, 254, "middle", -16],
+      [820, 300, "middle", 26],
+      [866, 262, "end", -16],
+    ],
+    edges: [
+      [0, 1],
+      [1, 2],
+      [2, 3],
+      [3, 4],
+      [4, 5],
+    ],
+    title: [762, 218, "middle"],
+  },
+  {
+    // Testing: a kite (a southern cross) on the right
+    id: "testing",
+    stars: [
+      [700, 452, "end", 5],
+      [748, 408, "middle", -16],
+      [794, 464, "start", 5],
+      [748, 516, "middle", 26],
+    ],
+    edges: [
+      [0, 1],
+      [1, 2],
+      [2, 3],
+      [3, 0],
+      [1, 3],
+    ],
+    title: [748, 372, "middle"],
+  },
+  {
+    // Cloud & DevOps: a low arc in the lower middle
+    id: "cloud",
+    stars: [
+      [508, 610, "end", 5],
+      [562, 646, "middle", 27],
+      [620, 634, "middle", -16],
+      [670, 670, "start", 5],
+    ],
+    edges: [
+      [0, 1],
+      [1, 2],
+      [2, 3],
+    ],
+    title: [586, 588, "middle"],
+  },
+  {
+    // Backend & Data: a serpent winding along the lower left
+    id: "backend",
+    stars: [
+      [120, 500, "middle", -16],
+      [178, 534, "middle", 27],
+      [236, 514, "middle", -16],
+      [292, 548, "middle", 27],
+      [346, 532, "middle", -16],
+      [396, 572, "middle", 27],
+      [448, 556, "start", 5],
+    ],
+    edges: [
+      [0, 1],
+      [1, 2],
+      [2, 3],
+      [3, 4],
+      [4, 5],
+      [5, 6],
+    ],
+    title: [284, 468, "middle"],
+  },
+  {
+    // Frontend & Mobile: a crown arc on the left
+    id: "frontend",
+    stars: [
+      [138, 336, "middle", 27],
+      [182, 294, "middle", -16],
+      [238, 280, "middle", -16],
+      [294, 298, "middle", -16],
+      [338, 334, "start", 5],
+      [362, 382, "start", 5],
+    ],
+    edges: [
+      [0, 1],
+      [1, 2],
+      [2, 3],
+      [3, 4],
+      [4, 5],
+    ],
+    title: [250, 244, "middle"],
+  },
+];
+
+const POLE = { x: 140, y: 90 };
 
 interface StarPos {
   branch: SkillBranch;
@@ -38,66 +175,39 @@ interface StarPos {
   skill: Skill;
   x: number;
   y: number;
-  labelAnchor: "start" | "end";
-  labelDx: number;
+  anchor: Anchor;
+  dy: number;
 }
 
-function layout() {
-  const stars: StarPos[] = [];
-  const lines: { branch: SkillBranch; bi: number; pts: string }[] = [];
-  skillBranches.forEach((branch, bi) => {
-    const a = (ANGLES[bi] * Math.PI) / 180;
-    const dx = Math.cos(a);
-    const dy = Math.sin(a);
-    const pts: string[] = [`${CX + dx * 34},${CY + dy * 34}`];
-    branch.skills.forEach((skill, si) => {
-      const r = R0 + si * STEP;
-      const x = CX + dx * r;
-      const y = CY + dy * r;
-      pts.push(`${x},${y}`);
-      stars.push({
-        branch,
-        bi,
-        skill,
-        x,
-        y,
-        labelAnchor: Math.abs(dx) < 0.3 || dx > 0 ? "start" : "end",
-        labelDx: Math.abs(dx) < 0.3 ? 17 : dx > 0 ? 16 : -16,
-      });
-    });
-    lines.push({ branch, bi, pts: pts.join(" ") });
+const STARS: StarPos[] = [];
+skillBranches.forEach((branch, bi) => {
+  const fig = FIGURES[bi];
+  branch.skills.forEach((skill, si) => {
+    const spec = fig.stars[si] ?? fig.stars[fig.stars.length - 1];
+    STARS.push({ branch, bi, skill, x: spec[0], y: spec[1], anchor: spec[2], dy: spec[3] });
   });
-  return { stars, lines };
-}
-
-const { stars: STARS, lines: LINES } = (() => layout())();
+});
 
 /** Fixed decorative dust stars (deterministic pseudo-random spread). */
-const DUST_STARS = Array.from({ length: 46 }, (_, i) => ({
-  x: 30 + ((i * 167 + 61) % 840),
-  y: 16 + ((i * 211 + 97) % 690),
-  r: 0.7 + (i % 3) * 0.45,
+const DUST_STARS = Array.from({ length: 54 }, (_, i) => ({
+  x: 24 + ((i * 167 + 61) % 852),
+  y: 14 + ((i * 211 + 97) % 700),
+  r: 0.6 + (i % 3) * 0.4,
   delay: `${((i * 0.37) % 3.4).toFixed(2)}s`,
 }));
-
-/** A 4-point sparkle star. */
-function Sparkle({ x, y, s, fill }: { x: number; y: number; s: number; fill: string }) {
-  const k = s * 0.28;
-  const pts = `${x},${y - s} ${x + k},${y - k} ${x + s},${y} ${x + k},${y + k} ${x},${y + s} ${x - k},${y + k} ${x - s},${y} ${x - k},${y - k}`;
-  return <polygon points={pts} fill={fill} />;
-}
 
 export function SkillsPage({ reveal, interactive }: { reveal: number; interactive: boolean }) {
   const reduced = useReducedMotion();
   const [sel, setSel] = useState<StarPos | null>(null);
   const active = interactive ? sel : null;
 
-  const starO = 0.42 + 0.58 * smooth(reveal, 0, 0.35);
+  const starO = 0.45 + 0.55 * smooth(reveal, 0, 0.35);
   const titleO = smooth(reveal, 0.45, 0.62);
   const labelO = smooth(reveal, 0.55, 0.75);
   const chromeO = smooth(reveal, 0.72, 0.9);
 
-  const branchDim = (b: SkillBranch) => (active && active.branch.id !== b.id ? 0.3 : 1);
+  /** Only dim while a star is actually hovered/focused. */
+  const dim = (b: SkillBranch) => (active && active.branch.id !== b.id ? 0.3 : 1);
 
   return (
     <div
@@ -107,7 +217,7 @@ export function SkillsPage({ reveal, interactive }: { reveal: number; interactiv
         inset: 0,
         overflow: "hidden",
         background:
-          "radial-gradient(120% 90% at 30% 12%, #131b3a 0%, #0b1128 48%, #06091a 100%)",
+          "radial-gradient(120% 90% at 30% 12%, #10173a 0%, #0a1028 48%, #05081a 100%)",
         display: "flex",
         flexDirection: "column",
       }}
@@ -167,8 +277,9 @@ export function SkillsPage({ reveal, interactive }: { reveal: number; interactiv
         {STARS.length} ABILITIES · LEVELS = SHIPPED USES · SELECT A STAR FOR PROOF
       </div>
 
-      {/* the sky + proof panel */}
+      {/* the sky + proof panel; leaving it clears the focus */}
       <div
+        onMouseLeave={() => setSel(null)}
         style={{
           flex: 1,
           display: "flex",
@@ -185,8 +296,23 @@ export function SkillsPage({ reveal, interactive }: { reveal: number; interactiv
           viewBox="0 0 900 740"
           style={{ flex: 1, maxWidth: 950, height: "100%", minHeight: 460 }}
           role="list"
-          aria-label="Skill constellation"
+          aria-label="Skill constellations"
         >
+          <defs>
+            {skillBranches.map((b) => (
+              <radialGradient key={b.id} id={`halo-${b.id}`}>
+                <stop offset="0%" stopColor={b.color} stopOpacity={0.85} />
+                <stop offset="45%" stopColor={b.color} stopOpacity={0.28} />
+                <stop offset="100%" stopColor={b.color} stopOpacity={0} />
+              </radialGradient>
+            ))}
+            <radialGradient id="halo-pole">
+              <stop offset="0%" stopColor="#f4f4fb" stopOpacity={0.9} />
+              <stop offset="45%" stopColor="#8fb6ff" stopOpacity={0.3} />
+              <stop offset="100%" stopColor="#8fb6ff" stopOpacity={0} />
+            </radialGradient>
+          </defs>
+
           {/* dust stars: always in the sky */}
           {DUST_STARS.map((d, i) => (
             <circle
@@ -196,36 +322,36 @@ export function SkillsPage({ reveal, interactive }: { reveal: number; interactiv
               cy={d.y}
               r={d.r}
               fill="#cfe0ff"
-              opacity={0.32}
+              opacity={0.3}
               style={{ animationDelay: d.delay }}
             />
           ))}
 
-          {/* constellation lines: draw on with the reveal, branch by branch */}
-          {LINES.map(({ branch, bi, pts }) => {
-            const lineP = smooth(reveal, 0.14 + bi * 0.05, 0.46 + bi * 0.05);
-            return (
-              <polyline
-                key={branch.id}
-                points={pts}
-                fill="none"
-                stroke={branch.color}
-                strokeOpacity={0.42 * lineP * branchDim(branch)}
-                strokeWidth={1.4}
-                pathLength={1}
-                strokeDasharray={1}
-                strokeDashoffset={1 - lineP}
-              />
-            );
-          })}
-
-          {/* the player star at the hub */}
+          {/* P1: the pole star, alone at the top of the sky */}
           <g opacity={starO}>
-            <circle cx={CX} cy={CY} r={16} fill="#8fb6ff" opacity={0.25} />
-            <Sparkle x={CX} y={CY} s={13} fill="#f4f4fb" />
+            <circle cx={POLE.x} cy={POLE.y} r={26} fill="url(#halo-pole)" />
+            <circle cx={POLE.x} cy={POLE.y} r={2.6} fill="#ffffff" />
+            <line
+              x1={POLE.x - 13}
+              x2={POLE.x + 13}
+              y1={POLE.y}
+              y2={POLE.y}
+              stroke="#eef2ff"
+              strokeWidth={0.8}
+              opacity={0.6}
+            />
+            <line
+              x1={POLE.x}
+              x2={POLE.x}
+              y1={POLE.y - 13}
+              y2={POLE.y + 13}
+              stroke="#eef2ff"
+              strokeWidth={0.8}
+              opacity={0.6}
+            />
             <text
-              x={CX}
-              y={CY + 34}
+              x={POLE.x}
+              y={POLE.y + 40}
               textAnchor="middle"
               style={{ fontFamily: PIXEL, fontSize: 8, fill: "#8fb6ff", opacity: titleO }}
             >
@@ -233,25 +359,50 @@ export function SkillsPage({ reveal, interactive }: { reveal: number; interactiv
             </text>
           </g>
 
-          {/* branch names at the constellation tips */}
-          {LINES.map(({ branch, bi }) => {
-            const a = (ANGLES[bi] * Math.PI) / 180;
-            const r = R0 + branch.skills.length * STEP + 6;
-            const x = CX + Math.cos(a) * r;
-            const y = CY + Math.sin(a) * r;
+          {/* constellation lines: draw on figure by figure */}
+          {FIGURES.map((fig, bi) => {
+            const branch = skillBranches[bi];
+            return fig.edges.map(([a, b], ei) => {
+              const lineP = smooth(
+                reveal,
+                0.14 + bi * 0.05 + ei * 0.03,
+                0.42 + bi * 0.05 + ei * 0.03,
+              );
+              const [x1, y1] = fig.stars[a];
+              const [x2, y2] = fig.stars[b];
+              return (
+                <line
+                  key={`${fig.id}-${ei}`}
+                  x1={x1}
+                  y1={y1}
+                  x2={x2}
+                  y2={y2}
+                  stroke={branch.color}
+                  strokeOpacity={0.4 * lineP * dim(branch)}
+                  strokeWidth={1.1}
+                  pathLength={1}
+                  strokeDasharray={1}
+                  strokeDashoffset={1 - lineP}
+                />
+              );
+            });
+          })}
+
+          {/* constellation names */}
+          {FIGURES.map((fig, bi) => {
+            const branch = skillBranches[bi];
             return (
               <text
-                key={branch.id}
-                x={x}
-                y={y}
-                textAnchor={
-                  Math.abs(Math.cos(a)) < 0.3 ? "middle" : Math.cos(a) > 0 ? "start" : "end"
-                }
+                key={fig.id}
+                x={fig.title[0]}
+                y={fig.title[1]}
+                textAnchor={fig.title[2]}
                 style={{
                   fontFamily: PIXEL,
                   fontSize: 9.5,
                   fill: branch.color,
-                  opacity: titleO * branchDim(branch),
+                  opacity: titleO * dim(branch),
+                  letterSpacing: 1,
                 }}
               >
                 {branch.name}
@@ -259,12 +410,15 @@ export function SkillsPage({ reveal, interactive }: { reveal: number; interactiv
             );
           })}
 
-          {/* the skill stars */}
+          {/* the skill stars: point cores with level-sized halos */}
           {STARS.map((n) => {
             const lv = skillLevel(n.skill);
-            const s = 4.5 + lv * 1.4;
             const isSel = active?.skill.id === n.skill.id;
             const starReveal = smooth(reveal, 0.05 + n.bi * 0.04, 0.4 + n.bi * 0.04);
+            const halo = 9 + lv * 4.6;
+            const core = 1.7 + lv * 0.45;
+            const flare = lv >= 4 ? 8 + lv * 2 : 0;
+            const dx = n.anchor === "start" ? 14 : n.anchor === "end" ? -14 : 0;
             return (
               <g
                 key={`${n.branch.id}-${n.skill.id}`}
@@ -274,39 +428,62 @@ export function SkillsPage({ reveal, interactive }: { reveal: number; interactiv
                 style={{
                   cursor: interactive ? "pointer" : "default",
                   outline: "none",
-                  opacity: branchDim(n.branch),
+                  opacity: dim(n.branch),
                   pointerEvents: interactive ? "auto" : "none",
                 }}
                 onMouseEnter={() => interactive && setSel(n)}
                 onFocus={() => interactive && setSel(n)}
+                onBlur={() => interactive && setSel(null)}
                 onClick={() => interactive && setSel(n)}
               >
+                {/* level halo (the glow IS the level) */}
+                <circle
+                  className={reduced || isSel ? undefined : "sky-star"}
+                  style={{ animationDelay: `${((n.x + n.y) % 3.4).toFixed(2)}s` }}
+                  cx={n.x}
+                  cy={n.y}
+                  r={halo * (0.8 + 0.2 * starReveal) * (isSel ? 1.25 : 1)}
+                  fill={`url(#halo-${n.branch.id})`}
+                  opacity={(0.4 + 0.12 * lv) * starO * (isSel ? 1.3 : 1)}
+                />
+                {/* diffraction flare on the brightest stars */}
+                {flare > 0 && (
+                  <g opacity={0.55 * starO * starReveal}>
+                    <line
+                      x1={n.x - flare}
+                      x2={n.x + flare}
+                      y1={n.y}
+                      y2={n.y}
+                      stroke="#eef2ff"
+                      strokeWidth={0.7}
+                    />
+                    <line
+                      x1={n.x}
+                      x2={n.x}
+                      y1={n.y - flare}
+                      y2={n.y + flare}
+                      stroke="#eef2ff"
+                      strokeWidth={0.7}
+                    />
+                  </g>
+                )}
+                {/* the star itself */}
                 <circle
                   cx={n.x}
                   cy={n.y}
-                  r={s + 8}
-                  fill={n.branch.color}
-                  opacity={(isSel ? 0.45 : 0.1 + lv * 0.04 + 0.1 * starReveal) * starO}
+                  r={isSel ? core + 0.7 : core}
+                  fill={isSel ? "#ffffff" : "#eef2ff"}
                 />
-                <g
-                  className={reduced || isSel ? undefined : "sky-star"}
-                  style={{ animationDelay: `${((n.x + n.y) % 3.4).toFixed(2)}s` }}
-                >
-                  <Sparkle
-                    x={n.x}
-                    y={n.y}
-                    s={s * (0.72 + 0.28 * starReveal)}
-                    fill={isSel ? "#ffffff" : starReveal > 0.5 ? "#eef2ff" : "#aab8e8"}
-                  />
-                </g>
+                {/* generous invisible hit area */}
+                <circle cx={n.x} cy={n.y} r={17} fill="transparent" />
                 <text
-                  x={n.x + n.labelDx}
-                  y={n.y + 4}
-                  textAnchor={n.labelAnchor}
+                  x={n.x + dx}
+                  y={n.y + n.dy}
+                  textAnchor={n.anchor}
                   className="font-mono"
                   style={{
-                    fontSize: 11.5,
-                    fill: isSel ? "#f4f4fb" : "#aab2d4",
+                    fontSize: 10.5,
+                    fill: isSel ? "#f4f4fb" : "#a6aed0",
                     opacity: labelO,
                     paintOrder: "stroke",
                     stroke: "#0a0f21",
