@@ -6,6 +6,7 @@ import { CrtOverlay } from "./CrtOverlay";
 import { useGameRoute } from "./useGameRoute";
 import { useReducedMotion } from "../motion/useReducedMotion";
 import { SkillsPage } from "../screens/SkillsPage";
+import { ContactScreen } from "../screens/ContactScreen";
 
 const MOCK =
   typeof window !== "undefined"
@@ -22,6 +23,14 @@ export function GameShell() {
   const { reveal, morph, active } = useGameRoute();
   const reducedMotion = useReducedMotion();
   // Mockup review: the skills constellation solo, fully revealed.
+  if (MOCK === "contact") {
+    return (
+      <>
+        <ContactScreen />
+        <CrtOverlay />
+      </>
+    );
+  }
   if (MOCK === "skills") {
     return (
       <>
@@ -44,7 +53,7 @@ export function GameShell() {
         </section>
       )}
       <Stub id="patch" n={5} title="PATCH NOTES" note="dev log" />
-      <Stub id="contact" n={6} title="CREDITS" note="contact screen" />
+      <ContactScreen />
       <GameNav reveal={reveal} morph={morph} active={active} />
       <HelpWidget />
       <CrtOverlay />
