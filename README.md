@@ -1,17 +1,56 @@
-# Zack Alatrash — Portfolio
+# retrofolio — Zack Alatrash
 
-A CLI-themed personal portfolio, built recruiter-first. It boots like a terminal,
-then renders into a modern animated scroll site (no typing required) with
-count-up metrics, device mockups, and a signature scroll-built architecture
-diagram. The terminal lives on as an optional `⌘K` command palette, with
-switchable color themes and a grounded RAG chatbot that answers questions about
-the work with citations and refuses anything outside its knowledge base.
+A portfolio built as one continuous retro video game. It opens on a title
+screen, boots a console, lets you browse real projects as game cartridges,
+tilts down to a handheld in your hands to meet the player, reveals the skill
+set as a night sky of real constellations, and closes on a credits roll.
 
-## Status
+The framing is playful; the content is not. Every number, claim and link comes
+from a real résumé, and the site's own help bot refuses anything it cannot
+support with evidence.
 
-Built and verified. The full scroll site, terminal command palette, boot
-sequence, and grounded RAG chatbot are implemented against the specs in `docs/`.
-114 unit tests pass; production build is clean.
+**Live:** _not deployed yet_ · **Stack:** React 18 · TypeScript · Vite ·
+Tailwind v4 · Vercel
+
+## The screens
+
+One pinned scroll sequence carries the first four screens on the same
+television, so the camera never cuts:
+
+1. **Title** — a 96-frame scroll-scrubbed hero that dies like a real CRT
+   (vertical collapse into a scanline, then a dot, then a phosphor ember) as a
+   dark room fades up and the set powers back on.
+2. **Game library** — seven projects as labelled cartridges on a shelf. Click
+   one and it arcs into the console, seats in the slot the way a top-loader
+   really does, boots a splash on the CRT, and the camera dives through the
+   glass into the project's detail screen.
+3. **Player 01 (about)** — the view tilts down to a handheld held in both
+   hands, it boots, and the camera pushes into its screen where the character
+   card resolves.
+4. **Skill constellations** — the card lifts away and the stars behind it turn
+   out to be the skill map: six real constellations plotted from actual star
+   coordinates (Leo, Lyra, Crux, Corvus, Ursa Major, Cancer). A star's
+   brightness is how many shipped projects use that skill, and every skill
+   deep-links to the cartridges that prove it.
+5. **Credits** — the end of the game: the credits roll over the same sky and
+   settle on the contact card.
+
+## What is worth reading in the code
+
+- `src/showcase/sequence.ts` — the phase map (S1–S4) every screen animates on.
+  The HUD derives its active screen from the same numbers, so the navigation
+  cannot drift out of sync with the visuals.
+- `src/screens/TitleLibrary.tsx` — the pinned sequence: the CRT power-cycle,
+  the cartridge boot flow, the tilt to the lap, the dive into the handheld.
+- `src/showcase/bootFlow.ts` — a small rAF tween engine that completes
+  instantly in a hidden tab, so an animation can never leave the UI stranded.
+- `src/screens/SkillsPage.tsx` — the constellations, projected from right
+  ascension and declination, panned by transform rather than a scroll
+  container (a scroll container lets the trackpad reach the browser's
+  back gesture).
+- `api/ask.ts` + `src/rag/` — the grounded help bot: hybrid retrieval, an
+  evidence gate, citation enforcement, and a retrieval-only fallback so it
+  still answers honestly with no API key and no cost.
 
 ## Run locally
 
@@ -22,78 +61,56 @@ npm test           # unit tests (Vitest)
 npm run build      # typecheck + production build
 ```
 
-The chatbot works offline in dev via a client-side retrieval fallback (real
-answers with citations and refusals, no LLM call). With a serverless deploy and
-an API key it streams full LLM answers.
+Useful debug parameters while developing:
 
-## E2E smoke (optional)
-
-```bash
-npx playwright install
-npm run test:e2e
-```
+| Parameter | Effect |
+| --- | --- |
+| `?seq=0..1` | Force the pinned sequence's progress |
+| `?mock=skills` / `?mock=contact` | Render one screen on its own |
+| `?cp=0..1` | Force the credits roll's progress |
+| `?motion` | Ignore `prefers-reduced-motion` |
 
 ## Deploy (Vercel)
 
-Push to a Vercel project. `api/ask.ts` is auto-detected as a serverless
-function; `vercel.json` sets its runtime. Environment variables:
+`api/ask.ts` is auto-detected as a serverless function; `vercel.json` sets its
+runtime. Environment variables:
 
-- `ANTHROPIC_API_KEY` (server-side only). Absent, the endpoint degrades to
-  retrieval-only cited answers, so the site still works with zero cost.
+- `ANTHROPIC_API_KEY` (server-side only). Without it the endpoint degrades to
+  retrieval-only cited answers, so the site still works at zero cost.
 - `ASK_MONTHLY_CALL_CAP` (optional, default 5000) caps LLM calls per month.
 
-## Verified behavior
+## Accessibility and motion
 
-Boot, theme switching with persistence, count-up metrics, the scroll-built RAG
-pipeline animation, project scenes with code artifacts, the command palette
-(backtick or the hero control), grounded chat answers with citation chips, and
-the off-topic refusal state.
-
-> Redesign in progress (2026-07-16): the site is being rebuilt as one cohesive
-> retro video game. See `docs/PAGE-LAYOUT.md` for the new structure. The docs
-> below are current; the previously built clean-terminal sections are retired
-> (PAGE-LAYOUT.md §11).
+`prefers-reduced-motion` is a first-class path, not an afterthought: the camera
+moves are skipped and every screen renders in its final state as ordinary
+sections. The constellation has a plain grouped list view, controls are real
+focusable elements with accessible names, and clipboard actions announce
+themselves to screen readers.
 
 ## Docs
 
-- [`docs/DESIGN.md`](docs/DESIGN.md) — master design spec (architecture, stack,
-  components, data flow, testing). Start here.
-- [`docs/PAGE-LAYOUT.md`](docs/PAGE-LAYOUT.md) — the retro-game main-page layout:
-  the six screens, navigation, HUD, deep links, and build order. Read second.
-- [`docs/DESIGN-SYSTEM.md`](docs/DESIGN-SYSTEM.md) — terminal visual system,
-  theme model, and the launch theme set.
-- [`docs/COMMANDS.md`](docs/COMMANDS.md) — the CLI command reference.
-- [`docs/MOTION-VISUALS.md`](docs/MOTION-VISUALS.md) — the recruiter-first scroll
-  narrative, motion system (GSAP), the scroll-built RAG pipeline, and how backend
-  projects are made visual. Read alongside DESIGN.md.
-- [`docs/SHOWCASE-CONSOLE.md`](docs/SHOWCASE-CONSOLE.md) — the retro console and
-  cartridge project showcase that replaces the long project scroll, including
-  the instruction-manual case studies and the 3D cartridge.
-- [`docs/ASSETS.md`](docs/ASSETS.md) — every asset to generate, with prompt
-  templates, technical specs, and priority tiers.
-- [`docs/CHATBOT.md`](docs/CHATBOT.md) — the grounded RAG chatbot spec
-  (knowledge base, retrieval, evidence gate, serverless endpoint, safety).
-- [`docs/CONTENT.md`](docs/CONTENT.md) — content model and copy, mapping the
-  master resume to every site surface.
+- [`docs/PAGE-LAYOUT.md`](docs/PAGE-LAYOUT.md) — the authoritative screen
+  structure, navigation, HUD and build order. Start here.
+- [`docs/SHOWCASE-CONSOLE.md`](docs/SHOWCASE-CONSOLE.md) — the console, the
+  cartridges and the click-to-detail flow.
+- [`docs/DESIGN.md`](docs/DESIGN.md) — architecture, stack, data flow, testing.
+- [`docs/CHATBOT.md`](docs/CHATBOT.md) — the grounded RAG spec: knowledge base,
+  retrieval, evidence gate, serverless endpoint, safety.
+- [`docs/CONTENT.md`](docs/CONTENT.md) — the content model, mapping the résumé
+  to every surface.
+- [`docs/ASSETS.md`](docs/ASSETS.md) — every asset, with generation prompts and
+  specs.
+- [`docs/DESIGN-SYSTEM.md`](docs/DESIGN-SYSTEM.md) — visual system and themes.
 
-## Concept in one line
-
-The site *demonstrates* the candidate: a keyboard-first engineer's shell that
-runs a live, cited, refusal-capable RAG assistant, the same anti-hallucination
-engineering that defines the portfolio.
-
-## Stack (planned)
-
-React 18 + TypeScript + Vite + Tailwind CSS v4, with GSAP ScrollTrigger + Lenis
-for the scroll narrative, deployed on Vercel with a single rate-limited
-serverless function for the chatbot. Vitest + Playwright for tests, GitHub
-Actions for CI.
+Some docs still describe the earlier CLI-themed build; `PAGE-LAYOUT.md` is the
+current source of truth for structure.
 
 ## Principles
 
-- Dual input, single content: nothing is locked behind the CLI.
-- No one locked out: non-technical visitors can click everything.
-- Grounded and honest: every claim traces to the resume; the chatbot only
-  answers from a curated knowledge base.
-- Fast and accessible: reduced-motion aware, keyboard-first, WCAG-AA themes.
-- Visitor-facing copy avoids em dashes.
+- **Grounded and honest.** Every claim traces to the résumé. Skill levels are
+  derived from shipped projects, never self-assessed. The bot refuses rather
+  than guesses.
+- **No one locked out.** Nothing is gated behind an animation; reduced motion
+  and the list views reach the same content.
+- **The wrapper is arcade, the substance is not.** Visuals carry the theme;
+  the writing stays professional.
