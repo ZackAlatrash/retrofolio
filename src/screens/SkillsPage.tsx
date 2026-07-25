@@ -48,142 +48,189 @@ const SKY_W = 1900;
 const SKY_H = 740;
 
 type Anchor = "start" | "middle" | "end";
-/** [x, y, labelAnchor, labelDy] per star; label dx derives from the anchor. */
-type StarSpec = [number, number, Anchor, number];
+
+interface RealStar {
+  /** The star's own name, so the edges below read like a star atlas. */
+  name: string;
+  /** Right ascension in hours and declination in degrees (J2000). */
+  ra: number;
+  dec: number;
+  anchor: Anchor;
+  dy: number;
+}
 
 interface Figure {
   id: string;
-  stars: StarSpec[];
-  edges: [number, number][];
+  /** The real constellation this branch is drawn as. */
+  sky: string;
+  /** Ordered brightest-first, so the flagship skill lands on the lead star. */
+  stars: RealStar[];
+  edges: [string, string][];
+  /** Where it sits in the sky world, and the scale of its projection. */
+  place: { x: number; y: number; kx: number; ky: number };
 }
 
 /**
- * Hand-authored constellation figures (order matches skillBranches, star
- * counts match each branch's skill count), spread across the wide sky.
+ * Real constellations, plotted from actual star coordinates: each star's
+ * position comes from its right ascension and declination, projected with
+ * x running east-to-west (as the sky is drawn) and y with declination. The
+ * shapes are therefore the genuine patterns, not decorative approximations.
+ * Leo leads, because that is Zack's sign.
  */
 const FIGURES: Figure[] = [
   {
-    // AI · RAG: a long dragon chain across the upper sky
     id: "ai",
+    sky: "LEO",
     stars: [
-      [430, 290, "end", 6],
-      [560, 225, "middle", -26],
-      [690, 205, "middle", 40],
-      [820, 230, "middle", -26],
-      [950, 180, "middle", 40],
-      [1075, 210, "middle", -26],
-      [1200, 165, "middle", -26],
-      [1310, 200, "start", 6],
+      { name: "Regulus", ra: 10.139, dec: 11.967, anchor: "middle", dy: 42 },
+      { name: "Algieba", ra: 10.333, dec: 19.841, anchor: "start", dy: 6 },
+      { name: "Denebola", ra: 11.818, dec: 14.572, anchor: "end", dy: 6 },
+      { name: "Zosma", ra: 11.235, dec: 20.524, anchor: "middle", dy: -26 },
+      { name: "Epsilon", ra: 9.764, dec: 23.774, anchor: "start", dy: 6 },
+      { name: "Chertan", ra: 11.237, dec: 15.43, anchor: "middle", dy: 42 },
+      { name: "Zeta", ra: 10.278, dec: 23.417, anchor: "middle", dy: -26 },
+      { name: "Mu", ra: 9.879, dec: 26.007, anchor: "middle", dy: -26 },
     ],
+    // the sickle (the lion's head), then the triangle of its hindquarters
     edges: [
-      [0, 1],
-      [1, 2],
-      [2, 3],
-      [3, 4],
-      [4, 5],
-      [5, 6],
-      [6, 7],
+      ["Epsilon", "Mu"],
+      ["Mu", "Zeta"],
+      ["Zeta", "Algieba"],
+      ["Algieba", "Regulus"],
+      ["Regulus", "Chertan"],
+      ["Chertan", "Denebola"],
+      ["Denebola", "Zosma"],
+      ["Zosma", "Chertan"],
+      ["Zosma", "Algieba"],
     ],
+    place: { x: 120, y: 170, kx: 280, ky: 20 },
   },
   {
-    // Architecture: a Cassiopeia W in the upper right
     id: "arch",
+    sky: "LYRA",
     stars: [
-      [1450, 330, "end", 6],
-      [1530, 255, "end", -18],
-      [1610, 330, "middle", 40],
-      [1690, 255, "middle", -26],
-      [1770, 330, "middle", 40],
-      [1840, 268, "end", -26],
+      { name: "Vega", ra: 18.615, dec: 38.784, anchor: "start", dy: 6 },
+      { name: "Sulafat", ra: 18.982, dec: 32.69, anchor: "end", dy: 6 },
+      { name: "Sheliak", ra: 18.834, dec: 33.363, anchor: "middle", dy: 42 },
+      { name: "Delta", ra: 18.898, dec: 36.899, anchor: "end", dy: 6 },
+      { name: "Zeta", ra: 18.746, dec: 37.605, anchor: "start", dy: 6 },
+      { name: "Epsilon", ra: 18.739, dec: 39.67, anchor: "middle", dy: -26 },
     ],
+    // Vega above the little parallelogram of the harp
     edges: [
-      [0, 1],
-      [1, 2],
-      [2, 3],
-      [3, 4],
-      [4, 5],
+      ["Vega", "Epsilon"],
+      ["Vega", "Zeta"],
+      ["Zeta", "Delta"],
+      ["Delta", "Sulafat"],
+      ["Sulafat", "Sheliak"],
+      ["Sheliak", "Zeta"],
     ],
+    place: { x: 900, y: 160, kx: 339, ky: 28 },
   },
   {
-    // Testing: a kite (a southern cross) on the right
     id: "testing",
+    sky: "CRUX",
     stars: [
-      [1500, 520, "end", 6],
-      [1592, 445, "middle", -26],
-      [1672, 530, "start", 6],
-      [1592, 612, "middle", 40],
+      { name: "Acrux", ra: 12.443, dec: -63.099, anchor: "middle", dy: 42 },
+      { name: "Mimosa", ra: 12.795, dec: -59.689, anchor: "end", dy: 6 },
+      { name: "Gacrux", ra: 12.519, dec: -57.113, anchor: "middle", dy: -26 },
+      { name: "Delta", ra: 12.253, dec: -58.749, anchor: "start", dy: 6 },
     ],
+    // the two crossing arms of the Southern Cross
     edges: [
-      [0, 1],
-      [1, 2],
-      [2, 3],
-      [3, 0],
-      [1, 3],
+      ["Gacrux", "Acrux"],
+      ["Mimosa", "Delta"],
     ],
+    place: { x: 1330, y: 170, kx: 264, ky: 35 },
   },
   {
-    // Cloud & DevOps: a low arc in the lower middle
     id: "cloud",
+    sky: "CORVUS",
     stars: [
-      [960, 618, "end", -18],
-      [1062, 664, "middle", 42],
-      [1172, 648, "middle", -26],
-      [1268, 690, "start", 6],
+      { name: "Gienah", ra: 12.263, dec: -17.542, anchor: "start", dy: 6 },
+      { name: "Kraz", ra: 12.573, dec: -23.397, anchor: "end", dy: 6 },
+      { name: "Algorab", ra: 12.498, dec: -16.515, anchor: "middle", dy: -26 },
+      { name: "Minkar", ra: 12.168, dec: -22.62, anchor: "start", dy: 6 },
     ],
+    // the crow's quadrilateral sail
     edges: [
-      [0, 1],
-      [1, 2],
-      [2, 3],
+      ["Algorab", "Gienah"],
+      ["Gienah", "Minkar"],
+      ["Minkar", "Kraz"],
+      ["Kraz", "Algorab"],
     ],
+    place: { x: 1050, y: 480, kx: 352, ky: 25 },
   },
   {
-    // Backend & Data: a serpent winding along the lower left
     id: "backend",
+    sky: "URSA MAJOR",
     stars: [
-      [180, 560, "middle", -26],
-      [292, 606, "middle", 42],
-      [402, 580, "middle", -26],
-      [512, 622, "middle", 42],
-      [616, 600, "middle", -26],
-      [716, 646, "middle", 42],
-      [820, 624, "start", 6],
+      { name: "Alioth", ra: 12.9, dec: 55.96, anchor: "end", dy: 6 },
+      { name: "Dubhe", ra: 11.062, dec: 61.751, anchor: "middle", dy: -26 },
+      { name: "Alkaid", ra: 13.792, dec: 49.313, anchor: "end", dy: 6 },
+      { name: "Mizar", ra: 13.399, dec: 54.925, anchor: "middle", dy: 42 },
+      { name: "Merak", ra: 11.031, dec: 56.382, anchor: "start", dy: 6 },
+      { name: "Phecda", ra: 11.897, dec: 53.695, anchor: "middle", dy: 42 },
+      { name: "Megrez", ra: 12.257, dec: 57.033, anchor: "middle", dy: -26 },
     ],
+    // the Plough: the bowl, then the handle
     edges: [
-      [0, 1],
-      [1, 2],
-      [2, 3],
-      [3, 4],
-      [4, 5],
-      [5, 6],
+      ["Dubhe", "Merak"],
+      ["Merak", "Phecda"],
+      ["Phecda", "Megrez"],
+      ["Megrez", "Dubhe"],
+      ["Megrez", "Alioth"],
+      ["Alioth", "Mizar"],
+      ["Mizar", "Alkaid"],
     ],
+    place: { x: 280, y: 540, kx: 103, ky: 12 },
   },
   {
-    // Frontend & Mobile: a crown arc on the left
     id: "frontend",
+    sky: "CANCER",
     stars: [
-      [160, 462, "middle", 42],
-      [242, 404, "middle", -26],
-      [352, 384, "middle", -26],
-      [462, 408, "middle", -26],
-      [542, 462, "start", 6],
-      [584, 522, "start", 6],
+      { name: "Altarf", ra: 8.275, dec: 9.186, anchor: "middle", dy: 42 },
+      { name: "Delta", ra: 8.745, dec: 18.154, anchor: "end", dy: 6 },
+      { name: "Iota", ra: 8.777, dec: 28.76, anchor: "middle", dy: -26 },
+      { name: "Acubens", ra: 8.975, dec: 11.858, anchor: "end", dy: 6 },
+      { name: "Gamma", ra: 8.721, dec: 21.469, anchor: "start", dy: 6 },
+      { name: "Zeta", ra: 8.204, dec: 17.648, anchor: "middle", dy: -26 },
     ],
+    // the crab: the inverted Y, with the two Asses either side of the Manger
     edges: [
-      [0, 1],
-      [1, 2],
-      [2, 3],
-      [3, 4],
-      [4, 5],
+      ["Iota", "Gamma"],
+      ["Gamma", "Delta"],
+      ["Delta", "Acubens"],
+      ["Delta", "Altarf"],
+      ["Delta", "Zeta"],
     ],
+    place: { x: 1500, y: 400, kx: 300, ky: 13 },
   },
 ];
+
+/** Project a figure's stars from sky coordinates into the sky world. */
+const PLOTTED = FIGURES.map((fig) => {
+  const maxRa = Math.max(...fig.stars.map((s) => s.ra));
+  const maxDec = Math.max(...fig.stars.map((s) => s.dec));
+  const at = new Map<string, { x: number; y: number }>();
+  const points = fig.stars.map((s) => {
+    const p = {
+      x: fig.place.x + (maxRa - s.ra) * fig.place.kx,
+      y: fig.place.y + (maxDec - s.dec) * fig.place.ky,
+    };
+    at.set(s.name, p);
+    return { ...s, ...p };
+  });
+  const lines = fig.edges.map(([a, b]) => ({ a: at.get(a)!, b: at.get(b)! }));
+  return { fig, points, lines };
+});
 
 const POLE = { x: 200, y: 105 };
 
 /** Each figure's box, so titles bind to their own stars and panning centres. */
-const BOXES = FIGURES.map((fig) => {
-  const xs = fig.stars.map((s) => s[0]);
-  const ys = fig.stars.map((s) => s[1]);
+const BOXES = PLOTTED.map(({ points }) => {
+  const xs = points.map((p) => p.x);
+  const ys = points.map((p) => p.y);
   const minX = Math.min(...xs);
   const maxX = Math.max(...xs);
   const minY = Math.min(...ys);
@@ -198,14 +245,16 @@ interface StarPos {
   y: number;
   anchor: Anchor;
   dy: number;
+  /** The real star this skill sits on. */
+  star: string;
 }
 
 const STARS: StarPos[] = [];
 skillBranches.forEach((branch, bi) => {
-  const fig = FIGURES[bi];
+  const { points } = PLOTTED[bi];
   branch.skills.forEach((skill, si) => {
-    const spec = fig.stars[si] ?? fig.stars[fig.stars.length - 1];
-    STARS.push({ branch, bi, skill, x: spec[0], y: spec[1], anchor: spec[2], dy: spec[3] });
+    const p = points[si] ?? points[points.length - 1];
+    STARS.push({ branch, bi, skill, x: p.x, y: p.y, anchor: p.anchor, dy: p.dy, star: p.name });
   });
 });
 
@@ -574,23 +623,21 @@ export function SkillsPage({ reveal, interactive }: { reveal: number; interactiv
               </g>
 
               {/* constellation lines */}
-              {FIGURES.map((fig, bi) => {
+              {PLOTTED.map(({ fig, lines }, bi) => {
                 const branch = skillBranches[bi];
-                return fig.edges.map(([a, b], ei) => {
+                return lines.map((ln, ei) => {
                   const lineP = smooth(
                     reveal,
                     0.14 + bi * 0.05 + ei * 0.03,
                     0.42 + bi * 0.05 + ei * 0.03,
                   );
-                  const [x1, y1] = fig.stars[a];
-                  const [x2, y2] = fig.stars[b];
                   return (
                     <line
                       key={`${fig.id}-${ei}`}
-                      x1={x1}
-                      y1={y1}
-                      x2={x2}
-                      y2={y2}
+                      x1={ln.a.x}
+                      y1={ln.a.y}
+                      x2={ln.b.x}
+                      y2={ln.b.y}
                       stroke={branch.color}
                       strokeOpacity={(focus === branch.id ? 0.9 : 0.55) * lineP * dim(branch)}
                       strokeWidth={focus === branch.id ? 1.7 : 1.3}
@@ -654,7 +701,7 @@ export function SkillsPage({ reveal, interactive }: { reveal: number; interactiv
                       className="font-mono"
                       style={{ fontSize: 10, fill: "#8a93bd", opacity: isFocus ? 0 : 0.9 }}
                     >
-                      {branch.skills.length} abilities
+                      {fig.sky} · {branch.skills.length} abilities
                     </text>
                   </g>
                 );
@@ -935,11 +982,17 @@ export function SkillsPage({ reveal, interactive }: { reveal: number; interactiv
                     fontFamily: PIXEL,
                     fontSize: 12,
                     color: "#f4f4fb",
-                    margin: "10px 0 8px",
+                    margin: "10px 0 6px",
                     lineHeight: 1.5,
                   }}
                 >
                   {active.skill.name}
+                </div>
+                <div
+                  className="font-mono"
+                  style={{ fontSize: 9.5, color: "#68719c", marginBottom: 9 }}
+                >
+                  ✦ {active.star}
                 </div>
                 <Pips skill={active.skill} color={active.branch.color} />
                 <p
