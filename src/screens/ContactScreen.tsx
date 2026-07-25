@@ -1,7 +1,7 @@
 import { useEffect, useRef, useState } from "react";
 import { profile } from "../content/profile";
 import { useReducedMotion } from "../motion/useReducedMotion";
-import { useSettings, pick } from "../game/settings";
+import { useSettings, pick, type Lang } from "../game/settings";
 import { skyUrl } from "../showcase/showcaseData";
 
 /**
@@ -27,6 +27,8 @@ const OUTRO = {
 };
 const REACH = { en: "HOW TO REACH ME", nl: "ZO BEREIK JE MIJ" };
 const RESUME_LABEL = { en: "DOWNLOAD CV", nl: "CV DOWNLOADEN" };
+const COPY = { en: "COPY", nl: "KOPIEER" };
+const COPIED = { en: "COPIED", nl: "GEKOPIEERD" };
 
 /** The roll: the facts a recruiter is actually looking for, in plain terms. */
 const ROLES: { label: { en: string; nl: string }; value: { en: string; nl: string } }[] = [
@@ -306,7 +308,7 @@ export function ContactScreen() {
                 justifyContent: "center",
               }}
             >
-              <Link href={`mailto:${profile.email}`} label="EMAIL" value={profile.email} primary />
+              <EmailTile email={profile.email} lang={lang} />
               <Link href={profile.github} label="GITHUB" value="ZackAlatrash" />
               <Link href={profile.linkedin} label="LINKEDIN" value="ziad-alatrash" />
             </div>
@@ -344,6 +346,101 @@ export function ContactScreen() {
         </div>
       </div>
     </section>
+  );
+}
+
+/**
+ * The email tile: the address still opens a mail client, but plenty of people
+ * have none configured, so it also carries a copy button. The button is a
+ * sibling of the link rather than inside it (a button cannot nest in an
+ * anchor), and it announces the result for screen readers.
+ */
+function EmailTile({ email, lang }: { email: string; lang: Lang }) {
+  const [copied, setCopied] = useState(false);
+
+  useEffect(() => {
+    if (!copied) return;
+    const id = window.setTimeout(() => setCopied(false), 1800);
+    return () => window.clearTimeout(id);
+  }, [copied]);
+
+  const copy = async () => {
+    try {
+      await navigator.clipboard.writeText(email);
+      setCopied(true);
+    } catch {
+      // Clipboard API needs a secure context; fall back to a scratch textarea.
+      const ta = document.createElement("textarea");
+      ta.value = email;
+      ta.setAttribute("readonly", "");
+      ta.style.position = "fixed";
+      ta.style.opacity = "0";
+      document.body.appendChild(ta);
+      ta.select();
+      try {
+        document.execCommand("copy");
+        setCopied(true);
+      } catch {
+        /* leave the address on screen to copy by hand */
+      }
+      ta.remove();
+    }
+  };
+
+  return (
+    <div
+      style={{
+        display: "flex",
+        alignItems: "stretch",
+        borderRadius: 9,
+        background: "rgba(122,162,247,0.18)",
+        border: "1px solid rgba(122,162,247,0.65)",
+        overflow: "hidden",
+      }}
+    >
+      <a
+        href={`mailto:${email}`}
+        style={{
+          display: "flex",
+          flexDirection: "column",
+          gap: 6,
+          padding: "12px 16px",
+          textDecoration: "none",
+        }}
+      >
+        <span style={{ fontFamily: PIXEL, fontSize: 8, color: "#8fb6ff", letterSpacing: 1 }}>
+          EMAIL
+        </span>
+        <span className="font-mono" style={{ fontSize: 13, color: "#eef1fa" }}>
+          {email}
+        </span>
+      </a>
+      <button
+        type="button"
+        onClick={copy}
+        aria-label={`${pick(lang, COPY)} ${email}`}
+        style={{
+          display: "flex",
+          alignItems: "center",
+          gap: 6,
+          padding: "0 14px",
+          cursor: "pointer",
+          background: copied ? "rgba(158,206,106,0.22)" : "rgba(10,16,34,0.55)",
+          border: "none",
+          borderLeft: "1px solid rgba(122,162,247,0.4)",
+          fontFamily: PIXEL,
+          fontSize: 7.5,
+          letterSpacing: 1,
+          color: copied ? "var(--term-green)" : "#8fb6ff",
+          transition: "background 0.2s ease, color 0.2s ease",
+        }}
+      >
+        {copied ? `✓ ${pick(lang, COPIED)}` : `⧉ ${pick(lang, COPY)}`}
+      </button>
+      <span aria-live="polite" className="sr-only">
+        {copied ? `${email} ${pick(lang, COPIED).toLowerCase()}` : ""}
+      </span>
+    </div>
   );
 }
 
