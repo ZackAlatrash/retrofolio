@@ -96,10 +96,27 @@ down since it runs the whole site).
   case study. Full spec: SHOWCASE-CONSOLE.md.
 - Assets: 12 cartridge labels, 3D hero cartridge, CRT, title-screen key art.
 
-### Screen 4 — SKILL TREE (Skills)
-- Your stack as a skill tree / inventory grid, grouped by domain (AI · RAG,
-  architecture, cloud, backend, frontend, testing) from the content model.
-- Assets: pixel tech icons.
+### Screen 4 — SKILL CONSTELLATIONS (Skills) — BUILT 2026-07-25
+- The night sky behind the About card turns out to be the skill map: the card
+  lifts away and the stars shine into six real constellations, one per domain.
+  Built as `src/screens/SkillsPage.tsx`, driven by the same pinned sequence
+  (SKILLS_VH / S4); content in `src/content/skills.ts`.
+- Real constellations, plotted from actual star coordinates (RA/Dec): AI · RAG
+  = LEO (Zack's sign; RAG systems sits on Regulus), Architecture = LYRA,
+  Testing = CRUX, Cloud = CORVUS, Backend = URSA MAJOR, Frontend = CANCER.
+  Star counts match each branch's skill count exactly.
+- Evidence, not self-rating: a star's brightness is how many shipped projects
+  use that skill, and the proof panel deep-links to the cartridges that prove
+  it. 35 abilities, curated from the master resume (the exhaustive keyword
+  list stays on the resume).
+- Reading model: calm default (six names only), a navigator rail that focuses
+  and pans to a constellation, labels only for the focused one, a brightness
+  legend, and a SKY/LIST toggle (LIST is the scannable/accessible view and
+  what phones get).
+- The sky pans horizontally by drag/wheel/arrows on a transformed layer (never
+  a scroll container, which would trigger the browser's back gesture).
+- Assets: the generated night-sky panorama (`public/game/sky.webp`). No pixel
+  tech icons needed after all.
 
 ### Screen 5 — PATCH NOTES (Dev log)
 - A changelog cartridge: what you are shipping now, newest first
