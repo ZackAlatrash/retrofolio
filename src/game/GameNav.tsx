@@ -1,7 +1,7 @@
 import { useEffect, useState, type CSSProperties } from "react";
 import { scrollToScreen } from "./screens";
+import { showcase } from "../showcase/showcaseData";
 import { useSettings } from "./settings";
-import { useTheme } from "../theme/useTheme";
 import { useReducedMotion } from "../motion/useReducedMotion";
 
 const ITEMS = [
@@ -55,9 +55,7 @@ export function GameNav({ reveal, morph, active }: GameNavProps) {
   const r = forcedM != null ? 1 : reduced ? 1 : reveal;
 
   const { w: W, h: H } = useWindowSize();
-  const { crt, toggleCrt, sound, toggleSound, lang, setLang } = useSettings();
-  const { theme, setTheme } = useTheme();
-  const isLight = theme === "paper";
+  const { lang, setLang } = useSettings();
 
   const n = ITEMS.length;
   const mid = (n - 1) / 2;
@@ -152,14 +150,16 @@ export function GameNav({ reveal, morph, active }: GameNavProps) {
           }}
         >
           <span
+            title={`${showcase.length} projects shipped`}
             style={{ fontSize: 13, color: "var(--term-accent)", marginRight: 4, letterSpacing: 0.5 }}
           >
-            ◆ 12
+            ◆ {showcase.length}
           </span>
-          <Key big label={isLight ? "☀" : "☾"} title="Light / dark" onClick={() => setTheme(isLight ? "tokyo-night" : "paper")} />
-          <Key label="CRT" title="CRT scanlines" on={crt} onClick={toggleCrt} />
-          <Key big label={sound ? "♪" : "♪̸"} title="Sound" on={sound} onClick={toggleSound} />
-          <Key label={lang.toUpperCase()} title="Language" onClick={() => setLang(lang === "en" ? "nl" : "en")} />
+          <Key
+            label={lang.toUpperCase()}
+            title="Language"
+            onClick={() => setLang(lang === "en" ? "nl" : "en")}
+          />
         </div>
       </div>
 
@@ -191,6 +191,9 @@ export function GameNav({ reveal, morph, active }: GameNavProps) {
               opacity: r,
               background: highlight ? "var(--term-accent)" : "transparent",
               color: highlight ? "var(--term-bg)" : "var(--term-fg)",
+              // the highlight eases; position/scale stay scroll-exact
+              transition:
+                "background 0.18s ease, color 0.18s ease, border-color 0.18s ease",
             }}
           >
             <span style={{ ...pixel, fontSize: "0.6em", color: highlight ? "var(--term-bg)" : "var(--term-green)", marginRight: 8, opacity: 0.85 }}>

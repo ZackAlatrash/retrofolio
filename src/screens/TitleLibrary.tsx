@@ -739,7 +739,7 @@ export function TitleLibrary() {
         aria-hidden="true"
         style={{
           position: "absolute",
-          top: `${SCRUB_VH + PULL_VH + REST_VH + 285}vh`,
+          top: `${SCRUB_VH + PULL_VH + REST_VH + 330}vh`,
           height: 1,
           width: 1,
         }}
@@ -750,7 +750,7 @@ export function TitleLibrary() {
         aria-hidden="true"
         style={{
           position: "absolute",
-          top: `${SCRUB_VH + PULL_VH + REST_VH + ABOUT_VH + 195}vh`,
+          top: `${SCRUB_VH + PULL_VH + REST_VH + ABOUT_VH + 223}vh`,
           height: 1,
           width: 1,
         }}
