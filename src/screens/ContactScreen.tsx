@@ -5,48 +5,87 @@ import { useSettings, pick } from "../game/settings";
 import { skyUrl } from "../showcase/showcaseData";
 
 /**
- * Screen 6 - CREDITS (Contact). The end of the game: the credits roll up over
- * the same night sky the constellation ends on, and settle on the contact
- * card with INSERT COIN TO CONTINUE.
+ * The final screen - CREDITS (Contact). The end of the game: the credits roll
+ * up over the same night sky the constellation ends on, and settle on the
+ * contact card with INSERT COIN TO CONTINUE.
  *
- * Every destination is real (from the content model); nothing is invented.
- * The resume button only appears if a resume actually exists at /resume.pdf.
- * Reduced motion drops the roll and lays the same content out statically.
+ * The roll doubles as the fact sheet a recruiter actually needs (role sought,
+ * availability, permit, languages, education, location), so it informs rather
+ * than just decorating. Every destination is real and comes from the content
+ * model; nothing here is invented.
  */
 
 const PIXEL = '"Press Start 2P", ui-monospace, monospace';
 const clamp01 = (x: number) => Math.max(0, Math.min(1, x));
 
 const HEADING = { en: "CREDITS", nl: "AFTITELING" };
+const STAGE = { en: "// THE END · GET IN TOUCH", nl: "// EINDE · NEEM CONTACT OP" };
 const CONTINUE = { en: "INSERT COIN TO CONTINUE", nl: "GOOI EEN MUNT ERIN" };
 const OUTRO = {
   en: "thanks for playing · now let's build something",
   nl: "bedankt voor het spelen · nu iets moois bouwen",
 };
+const REACH = { en: "HOW TO REACH ME", nl: "ZO BEREIK JE MIJ" };
+const RESUME_LABEL = { en: "DOWNLOAD CV", nl: "CV DOWNLOADEN" };
 
-const ROLES: { label: { en: string; nl: string }; value: string }[] = [
-  { label: { en: "A PORTFOLIO BY", nl: "EEN PORTFOLIO VAN" }, value: "Zack Alatrash" },
+/** The roll: the facts a recruiter is actually looking for, in plain terms. */
+const ROLES: { label: { en: string; nl: string }; value: { en: string; nl: string } }[] = [
   {
-    label: { en: "DESIGN & ENGINEERING", nl: "ONTWERP & ONTWIKKELING" },
-    value: "Zack Alatrash",
-  },
-  { label: { en: "BUILT WITH", nl: "GEBOUWD MET" }, value: "React 18 · TypeScript · Vite" },
-  {
-    label: { en: "PIXEL ART", nl: "PIXELART" },
-    value: "Generated and art-directed by Zack",
+    label: { en: "PLAYER 1", nl: "SPELER 1" },
+    value: { en: "Zack Alatrash · AI/LLM systems engineer", nl: "Zack Alatrash · AI/LLM systems engineer" },
   },
   {
-    label: { en: "THE HELP BOT", nl: "DE HELP-BOT" },
-    value: "Retrieval + an evidence gate, so it never invents an answer",
+    label: { en: "LOOKING FOR", nl: "OP ZOEK NAAR" },
+    value: {
+      en: "A part-time junior software developer role, alongside my studies",
+      nl: "Een parttime junior softwareontwikkelaar-rol, naast mijn studie",
+    },
   },
   {
-    label: { en: "SPECIAL THANKS", nl: "MET DANK AAN" },
-    value: "Impala Studios · Hogeschool Inholland",
+    label: { en: "AVAILABLE FROM", nl: "BESCHIKBAAR VANAF" },
+    value: { en: "Summer 2026", nl: "Zomer 2026" },
   },
-  { label: { en: "BASED IN", nl: "GEVESTIGD IN" }, value: profile.location },
   {
-    label: { en: "STATUS", nl: "STATUS" },
-    value: "Available from summer 2026",
+    label: { en: "BASED IN", nl: "GEVESTIGD IN" },
+    value: {
+      en: "Haarlem, Netherlands · open to Amsterdam and remote",
+      nl: "Haarlem, Nederland · open voor Amsterdam en remote",
+    },
+  },
+  {
+    label: { en: "WORK PERMIT", nl: "WERKVERGUNNING" },
+    value: {
+      en: "Valid Dutch residence and work permit",
+      nl: "Geldige Nederlandse verblijfs- en werkvergunning",
+    },
+  },
+  {
+    label: { en: "LANGUAGES", nl: "TALEN" },
+    value: {
+      en: "Arabic (native) · English (C1) · Dutch (B1, improving)",
+      nl: "Arabisch (moedertaal) · Engels (C1) · Nederlands (B1, groeiend)",
+    },
+  },
+  {
+    label: { en: "STUDYING", nl: "STUDIE" },
+    value: {
+      en: "BSc Information Technology, Inholland · 4th year, graduating 2027",
+      nl: "BSc Informatica, Inholland · 4e jaar, afstuderen in 2027",
+    },
+  },
+  {
+    label: { en: "MOST RECENTLY", nl: "MEEST RECENT" },
+    value: {
+      en: "Backend intern at Impala Studios · graded 9/10",
+      nl: "Backend-stagiair bij Impala Studios · beoordeeld met een 9",
+    },
+  },
+  {
+    label: { en: "BUILT WITH", nl: "GEBOUWD MET" },
+    value: {
+      en: "React 18 · TypeScript · Vite · a grounded RAG help bot",
+      nl: "React 18 · TypeScript · Vite · een gefundeerde RAG-helpbot",
+    },
   },
 ];
 
@@ -59,27 +98,11 @@ export function ContactScreen() {
   const rollRef = useRef<HTMLDivElement>(null);
   const [p, setP] = useState(0);
   const [shift, setShift] = useState({ from: 0, travel: 0 });
-  const [hasResume, setHasResume] = useState(false);
   // Debug: ?cp=<0..1> forces the roll's progress (renders at scroll 0).
   const forced =
     typeof window === "undefined"
       ? null
       : new URLSearchParams(window.location.search).get("cp");
-
-  // The resume button only exists once the file does.
-  useEffect(() => {
-    let live = true;
-    fetch(RESUME_URL, { method: "HEAD" })
-      .then((r) => {
-        if (live && r.ok && (r.headers.get("content-type") ?? "").includes("pdf")) {
-          setHasResume(true);
-        }
-      })
-      .catch(() => {});
-    return () => {
-      live = false;
-    };
-  }, []);
 
   // Measure the roll so it starts below the fold and ends holding the card.
   useEffect(() => {
@@ -87,7 +110,9 @@ export function ContactScreen() {
     const measure = () => {
       const h = rollRef.current?.offsetHeight ?? 0;
       const vh = window.innerHeight;
-      setShift({ from: vh * 0.9, travel: h + vh * 0.35 });
+      // Ends with the stack's foot just inside the frame, so the contact card
+      // lands held in view rather than rolling off the top.
+      setShift({ from: vh * 0.92, travel: h + vh * 0.02 });
     };
     measure();
     const id = window.setTimeout(measure, 500); // after webfonts settle
@@ -96,7 +121,7 @@ export function ContactScreen() {
       window.clearTimeout(id);
       window.removeEventListener("resize", measure);
     };
-  }, [reduced, lang, hasResume]);
+  }, [reduced, lang]);
 
   // Scroll drives the roll.
   useEffect(() => {
@@ -118,9 +143,11 @@ export function ContactScreen() {
       window.removeEventListener("scroll", onScroll);
       cancelAnimationFrame(raf);
     };
-  }, [reduced]);
+  }, [reduced, forced]);
 
-  const prog = forced != null ? clamp01(parseFloat(forced)) : p;
+  const raw = forced != null ? clamp01(parseFloat(forced)) : p;
+  // The roll finishes at 80%, so the contact card holds while you read it.
+  const prog = clamp01(raw / 0.8);
   const y = reduced ? 0 : shift.from - prog * shift.travel;
 
   return (
@@ -130,7 +157,7 @@ export function ContactScreen() {
       aria-label="Contact"
       style={{
         position: "relative",
-        height: reduced ? "auto" : "260vh",
+        height: reduced ? "auto" : "300vh",
         minHeight: "100vh",
         scrollMarginTop: 52,
         backgroundColor: "#05081a",
@@ -142,12 +169,39 @@ export function ContactScreen() {
           top: 0,
           height: reduced ? "auto" : "100vh",
           overflow: "hidden",
-          backgroundImage: `linear-gradient(rgba(6,9,26,0.62), rgba(6,9,26,0.78)), url(${skyUrl})`,
+          backgroundImage: `linear-gradient(rgba(6,9,26,0.66), rgba(6,9,26,0.82)), url(${skyUrl})`,
           backgroundSize: "cover",
           backgroundPosition: "center",
           padding: reduced ? "84px 20px 64px" : undefined,
         }}
       >
+        {/* what screen this is, held still while the credits roll under it */}
+        {!reduced && (
+          <div
+            style={{
+              position: "absolute",
+              top: 66,
+              left: 0,
+              right: 0,
+              textAlign: "center",
+              zIndex: 3,
+              pointerEvents: "none",
+              // deep enough that the credits pass cleanly under the header
+              background:
+                "linear-gradient(to bottom, rgba(5,8,26,0.97) 45%, rgba(5,8,26,0.75) 72%, transparent)",
+              paddingTop: 10,
+              paddingBottom: 54,
+            }}
+          >
+            <div
+              className="font-mono"
+              style={{ fontSize: 11, letterSpacing: 2, color: "var(--term-green)" }}
+            >
+              {pick(lang, STAGE)}
+            </div>
+          </div>
+        )}
+
         <div
           ref={rollRef}
           style={{
@@ -158,7 +212,7 @@ export function ContactScreen() {
             display: "flex",
             flexDirection: "column",
             alignItems: "center",
-            gap: 34,
+            gap: 40,
             padding: "0 20px",
             willChange: "transform",
           }}
@@ -166,7 +220,7 @@ export function ContactScreen() {
           <div
             style={{
               fontFamily: PIXEL,
-              fontSize: "clamp(16px, 3vw, 26px)",
+              fontSize: "clamp(20px, 3.6vw, 34px)",
               color: "#f4f4fb",
               textShadow: "3px 3px 0 #4a2f9e",
               letterSpacing: 2,
@@ -176,23 +230,27 @@ export function ContactScreen() {
           </div>
 
           {ROLES.map((r) => (
-            <div key={r.label.en} style={{ textAlign: "center" }}>
+            <div key={r.label.en} style={{ textAlign: "center", maxWidth: 760 }}>
               <div
                 style={{
                   fontFamily: PIXEL,
-                  fontSize: 9,
+                  fontSize: 11,
                   color: "#8fb6ff",
                   letterSpacing: 1.5,
-                  marginBottom: 10,
+                  marginBottom: 14,
                 }}
               >
                 {pick(lang, r.label)}
               </div>
               <div
                 className="font-mono"
-                style={{ fontSize: "clamp(13px, 1.5vw, 16px)", color: "#e2e6f5" }}
+                style={{
+                  fontSize: "clamp(16px, 1.9vw, 21px)",
+                  color: "#eef1fa",
+                  lineHeight: 1.55,
+                }}
               >
-                {r.value}
+                {pick(lang, r.value)}
               </div>
             </div>
           ))}
@@ -200,13 +258,13 @@ export function ContactScreen() {
           {/* the last card: how to reach me */}
           <div
             style={{
-              marginTop: 14,
-              width: "min(560px, 100%)",
-              border: "2px solid rgba(122,162,247,0.4)",
-              borderRadius: 14,
-              background: "rgba(10,16,34,0.86)",
-              boxShadow: "0 30px 80px rgba(0,0,0,0.6), 0 0 60px rgba(122,162,247,0.14)",
-              padding: "26px 22px",
+              marginTop: 20,
+              width: "min(680px, 100%)",
+              border: "2px solid rgba(122,162,247,0.45)",
+              borderRadius: 16,
+              background: "rgba(10,16,34,0.9)",
+              boxShadow: "0 30px 80px rgba(0,0,0,0.6), 0 0 70px rgba(122,162,247,0.16)",
+              padding: "32px 26px",
               textAlign: "center",
             }}
           >
@@ -214,7 +272,7 @@ export function ContactScreen() {
               className="press-blink"
               style={{
                 fontFamily: PIXEL,
-                fontSize: "clamp(10px, 1.5vw, 13px)",
+                fontSize: "clamp(12px, 1.8vw, 16px)",
                 color: "#fff",
                 textShadow: "0 0 14px rgba(122,162,247,0.7)",
               }}
@@ -223,38 +281,62 @@ export function ContactScreen() {
             </div>
             <div
               className="font-mono"
-              style={{ fontSize: 12, color: "#8a93bd", margin: "14px 0 20px" }}
+              style={{ fontSize: 14, color: "#9aa3c8", margin: "16px 0 26px" }}
             >
               {pick(lang, OUTRO)}
             </div>
 
             <div
               style={{
+                fontFamily: PIXEL,
+                fontSize: 9,
+                color: "#68719c",
+                letterSpacing: 1.5,
+                marginBottom: 14,
+              }}
+            >
+              {pick(lang, REACH)}
+            </div>
+
+            <div
+              style={{
                 display: "flex",
                 flexWrap: "wrap",
-                gap: 10,
+                gap: 12,
                 justifyContent: "center",
               }}
             >
               <Link href={`mailto:${profile.email}`} label="EMAIL" value={profile.email} primary />
               <Link href={profile.github} label="GITHUB" value="ZackAlatrash" />
               <Link href={profile.linkedin} label="LINKEDIN" value="ziad-alatrash" />
-              {hasResume && <Link href={RESUME_URL} label="RESUME" value="PDF" download />}
             </div>
 
-            <div
-              className="font-mono"
-              style={{ fontSize: 10.5, color: "#68719c", marginTop: 20, lineHeight: 1.7 }}
+            <a
+              href={RESUME_URL}
+              download
+              style={{
+                display: "inline-flex",
+                alignItems: "center",
+                gap: 10,
+                marginTop: 18,
+                padding: "13px 22px",
+                borderRadius: 9,
+                textDecoration: "none",
+                fontFamily: PIXEL,
+                fontSize: 10,
+                letterSpacing: 1,
+                color: "#06091a",
+                background: "var(--term-green)",
+                boxShadow: "0 0 24px rgba(158,206,106,0.35)",
+              }}
             >
-              {profile.seeking}
-              <br />
-              {profile.status} · references available on request
-            </div>
+              ⇩ {pick(lang, RESUME_LABEL)}
+            </a>
           </div>
 
           <div
             className="font-mono"
-            style={{ fontSize: 10, color: "#565f89", letterSpacing: 1, paddingBottom: 8 }}
+            style={{ fontSize: 11, color: "#565f89", letterSpacing: 1, paddingBottom: 8 }}
           >
             © 2026 ZACK ALATRASH · {profile.location.toUpperCase()}
           </div>
@@ -269,35 +351,33 @@ function Link({
   label,
   value,
   primary,
-  download,
 }: {
   href: string;
   label: string;
   value: string;
   primary?: boolean;
-  download?: boolean;
 }) {
+  const external = !href.startsWith("mailto:");
   return (
     <a
       href={href}
-      target={href.startsWith("mailto:") ? undefined : "_blank"}
-      rel={href.startsWith("mailto:") ? undefined : "noreferrer noopener"}
-      download={download ? "" : undefined}
+      target={external ? "_blank" : undefined}
+      rel={external ? "noreferrer noopener" : undefined}
       style={{
         display: "flex",
         flexDirection: "column",
-        gap: 5,
-        padding: "10px 15px",
-        borderRadius: 8,
+        gap: 6,
+        padding: "12px 18px",
+        borderRadius: 9,
         textDecoration: "none",
-        background: primary ? "rgba(122,162,247,0.16)" : "rgba(16,24,46,0.75)",
-        border: `1px solid ${primary ? "rgba(122,162,247,0.6)" : "rgba(122,162,247,0.25)"}`,
+        background: primary ? "rgba(122,162,247,0.18)" : "rgba(16,24,46,0.78)",
+        border: `1px solid ${primary ? "rgba(122,162,247,0.65)" : "rgba(122,162,247,0.28)"}`,
       }}
     >
-      <span style={{ fontFamily: PIXEL, fontSize: 7.5, color: "#8fb6ff", letterSpacing: 1 }}>
+      <span style={{ fontFamily: PIXEL, fontSize: 8, color: "#8fb6ff", letterSpacing: 1 }}>
         {label}
       </span>
-      <span className="font-mono" style={{ fontSize: 11.5, color: "#e2e6f5" }}>
+      <span className="font-mono" style={{ fontSize: 13, color: "#eef1fa" }}>
         {value}
       </span>
     </a>
