@@ -313,7 +313,8 @@ export function ContactScreen() {
 
             <a
               href={RESUME_URL}
-              download
+              // so it lands in their downloads folder with his name on it
+              download="Ziad_Alatrash_CV.pdf"
               style={{
                 display: "inline-flex",
                 alignItems: "center",
