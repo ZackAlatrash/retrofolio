@@ -30,6 +30,8 @@ import {
   S4,
   clamp01,
   smooth,
+  aboutRitual,
+  skillsReveal,
 } from "../showcase/sequence";
 import { AboutCard } from "./AboutCard";
 import { SkillsPage } from "./SkillsPage";
@@ -610,7 +612,7 @@ export function TitleLibrary() {
     const world = worldRef.current;
     const lap = lapLayerRef.current;
     if (!world || !lap) return;
-    const aP = clamp01((p - S3) / (S4 - S3));
+    const aP = aboutRitual(clamp01((p - S3) / (S4 - S3)));
     // Never fight the cartridge dive.
     if (flowRef.current.phase !== "shelf") return;
     if (aP <= 0.001) {
@@ -663,7 +665,10 @@ export function TitleLibrary() {
   const t = clamp01((p - S1) / (S2 - S1));
 
   // ---- the About beat: tilt down -> handheld boots -> dive -> the card ----
-  const aboutP = clamp01((p - S3) / (S4 - S3));
+  // Phase progress, then ritual progress: the ritual finishes early and the
+  // screen holds for the rest of the phase.
+  const aboutPhase = clamp01((p - S3) / (S4 - S3));
+  const aboutP = aboutRitual(aboutPhase);
   const tiltE = smooth(aboutP, 0, 0.34);
   // Mid-tilt only: the veil breathes, the lap's top edge feathers into the
   // room, and the lap is graded toward the room's tone, so the two arts
@@ -679,7 +684,8 @@ export function TitleLibrary() {
   const cardIn = smooth(aboutP, 0.78, 0.95); // the card resolves
 
   // ---- the constellation reveal: the card lifts, the stars shine ----
-  const skillsP = clamp01((p - S4) / (1 - S4));
+  const skillsPhase = clamp01((p - S4) / (1 - S4));
+  const skillsP = skillsReveal(skillsPhase);
   const cardExit = smooth(skillsP, 0, 0.22);
 
   // ---- the CRT death (on the full-screen picture) ----
@@ -739,7 +745,7 @@ export function TitleLibrary() {
         aria-hidden="true"
         style={{
           position: "absolute",
-          top: `${SCRUB_VH + PULL_VH + REST_VH + 330}vh`,
+          top: `${SCRUB_VH + PULL_VH + REST_VH + 383}vh`,
           height: 1,
           width: 1,
         }}
@@ -750,7 +756,7 @@ export function TitleLibrary() {
         aria-hidden="true"
         style={{
           position: "absolute",
-          top: `${SCRUB_VH + PULL_VH + REST_VH + ABOUT_VH + 223}vh`,
+          top: `${SCRUB_VH + PULL_VH + REST_VH + ABOUT_VH + 274}vh`,
           height: 1,
           width: 1,
         }}

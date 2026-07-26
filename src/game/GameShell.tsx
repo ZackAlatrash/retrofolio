@@ -7,6 +7,7 @@ import { useGameRoute } from "./useGameRoute";
 import { useReducedMotion } from "../motion/useReducedMotion";
 import { SkillsPage } from "../screens/SkillsPage";
 import { ContactScreen } from "../screens/ContactScreen";
+import { ScrollCue } from "./ScrollCue";
 
 const MOCK =
   typeof window !== "undefined"
@@ -22,7 +23,7 @@ const MOCK =
  * Debug: ?mock=skills / ?mock=contact render a single screen on its own.
  */
 export function GameShell() {
-  const { reveal, morph, active } = useGameRoute();
+  const { reveal, morph, active, progress, ticks, settled, atEnd } = useGameRoute();
   const reducedMotion = useReducedMotion();
 
   if (MOCK === "contact") {
@@ -65,7 +66,15 @@ export function GameShell() {
         </section>
       )}
       <ContactScreen />
-      <GameNav reveal={reveal} morph={morph} active={active} />
+      <GameNav
+        reveal={reveal}
+        morph={morph}
+        active={active}
+        progress={progress}
+        ticks={ticks}
+      />
+      {/* the title screen has its own cue, so this takes over after it */}
+      <ScrollCue show={reveal > 0.9} settled={settled} atEnd={atEnd} />
       <HelpWidget />
       <CrtOverlay />
     </>
