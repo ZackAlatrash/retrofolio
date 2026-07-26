@@ -27,6 +27,14 @@ import { skyUrl } from "../showcase/showcaseData";
  *   - a SKY/LIST toggle swaps the whole thing for a plain grouped list
  *     (fast to scan, accessible, and what phones get)
  *
+ * The chrome never fights the sky. The rail and the proof panel hold fixed
+ * lanes on either side, and everything that positions itself aims at the band
+ * of sky between them (`safeBox`): focusing centres a figure inside it,
+ * committing to a star brings that star inside it, and every skill label picks
+ * the side of its dot that keeps the text within it. So the constellation you
+ * are reading is never parked under a box, and no label is ever cut off by one
+ * or by the edge of the screen.
+ *
  * The sky world is wider than the viewport and pans by drag / trackpad /
  * native horizontal scroll. Vertical page scroll is never hijacked.
  */
@@ -39,9 +47,15 @@ const smooth = (x: number, a: number, b: number) => {
 };
 const clamp = (v: number, lo: number, hi: number) => Math.max(lo, Math.min(hi, v));
 
-/** Proof-panel width, and the space the navigator rail needs on the left. */
+/** Proof-panel width: it holds a permanent lane on the right of the sky. */
 const PANEL_W = 316;
-const RAIL_CLEAR = 252;
+/** Breathing room between the chrome and the nearest star or label. */
+const CHROME_GAP = 22;
+/** Skill-label metrics in sky units: the mono face renders 0.602em per char. */
+const LABEL_SIZE = 13.5;
+const LABEL_CHAR_W = LABEL_SIZE * 0.602;
+/** How far a beside-the-star label sits off its dot. */
+const LABEL_DX = 18;
 
 /** The sky world, in SVG units. Wider than a viewport: it pans. */
 const SKY_W = 1900;
@@ -271,8 +285,6 @@ export function SkillsPage({ reveal, interactive }: { reveal: number; interactiv
   const [sel, setSel] = useState<StarPos | null>(null);
   const [focusId, setFocusId] = useState<string | null>(null);
   const [view, setView] = useState<"sky" | "list">("sky");
-  // The proof panel flips to whichever side of the sky the star is NOT on.
-  const [panelSide, setPanelSide] = useState<"left" | "right">("right");
   const active = interactive ? sel : null;
   const focus = interactive ? focusId : null;
 
@@ -286,11 +298,16 @@ export function SkillsPage({ reveal, interactive }: { reveal: number; interactiv
   const rootRef = useRef<HTMLDivElement>(null);
   const viewportRef = useRef<HTMLDivElement>(null);
   const worldRef = useRef<HTMLDivElement>(null);
+  const railRef = useRef<HTMLDivElement>(null);
   const panRef = useRef(0);
   const maxPanRef = useRef(0);
   const dragRef = useRef<{ startX: number; startPan: number; moved: boolean } | null>(null);
   const [skyW, setSkyW] = useState(0);
   const [pan, setPan] = useState({ left: false, right: true });
+  /** Mirrors panRef for rendering: label sides are chosen from screen position. */
+  const [panX, setPanX] = useState(0);
+  /** Measured, because the rail is only as wide as the longest branch name. */
+  const [railW, setRailW] = useState(0);
 
   /** Move the sky. Clamped to its own bounds, so it can never overscroll. */
   const applyPan = (x: number, animate = false) => {
@@ -302,6 +319,69 @@ export function SkillsPage({ reveal, interactive }: { reveal: number; interactiv
       animate && !reduced ? "transform 0.55s cubic-bezier(0.23,1,0.32,1)" : "none";
     world.style.transform = `translateX(${-next}px)`;
     setPan({ left: next > 6, right: next < maxPanRef.current - 6 });
+    setPanX(next);
+  };
+
+  /**
+   * The band of sky that no chrome covers: the navigator rail holds a lane on
+   * the left, the proof panel one on the right. Focusing, selecting and label
+   * placement all aim inside this band, so the constellation you are reading
+   * never comes to rest under a box and no label runs off the screen.
+   */
+  const safeBox = () => {
+    const w = viewportRef.current?.clientWidth ?? 0;
+    const full = { left: 0, right: w };
+    if (!interactive || !w) return full;
+    const box = { left: 16 + railW + CHROME_GAP, right: w - (16 + PANEL_W + CHROME_GAP) };
+    if (box.right - box.left >= w * 0.42) return box;
+    // Too narrow for both lanes. Give the rail's back first: it sits high and
+    // out of the way, while the panel is the box that lands over the middle of
+    // the sky. Below even that, keep the full width rather than squeezing the
+    // sky into a slot; the mobile pass gives the chrome a different home.
+    const panelOnly = { left: 0, right: box.right };
+    return panelOnly.right >= w * 0.42 ? panelOnly : full;
+  };
+
+  /**
+   * Which side of its star a label sits on. The side it was designed with wins
+   * whenever it fits; otherwise the label flips rather than sliding under the
+   * chrome or off the edge of the screen.
+   */
+  const anchorFor = (n: StarPos, scale: number, safe: { left: number; right: number }): Anchor => {
+    if (!scale) return n.anchor;
+    const sx = n.x * scale - panX;
+    const w = n.skill.name.length * LABEL_CHAR_W * scale;
+    const off = LABEL_DX * scale;
+    const fits: Record<Anchor, boolean> = {
+      start: sx + off + w <= safe.right,
+      end: sx - off - w >= safe.left,
+      middle: sx - w / 2 >= safe.left && sx + w / 2 <= safe.right,
+    };
+    if (fits[n.anchor]) return n.anchor;
+    const order: Anchor[] =
+      n.anchor === "start"
+        ? ["end", "middle"]
+        : n.anchor === "end"
+          ? ["start", "middle"]
+          : sx > (safe.left + safe.right) / 2
+            ? ["end", "start"]
+            : ["start", "end"];
+    return order.find((a) => fits[a]) ?? n.anchor;
+  };
+
+  /** A star's horizontal reach, halo plus label, in world pixels. */
+  const extentOf = (n: StarPos, scale: number, anchor: Anchor) => {
+    const cx = n.x * scale;
+    const halo = (12 + skillLevel(n.skill) * 5.6) * scale;
+    const w = n.skill.name.length * LABEL_CHAR_W * scale;
+    const off = LABEL_DX * scale;
+    const label =
+      anchor === "start"
+        ? { left: cx + off, right: cx + off + w }
+        : anchor === "end"
+          ? { left: cx - off - w, right: cx - off }
+          : { left: cx - w / 2, right: cx + w / 2 };
+    return { left: Math.min(cx - halo, label.left), right: Math.max(cx + halo, label.right) };
   };
 
   /** Size the sky to the frame height and keep the pan inside its bounds. */
@@ -311,6 +391,7 @@ export function SkillsPage({ reveal, interactive }: { reveal: number; interactiv
     const measure = () => {
       const w = Math.max(vp.clientWidth, vp.clientHeight * (SKY_W / SKY_H));
       setSkyW(w);
+      setRailW(railRef.current?.offsetWidth ?? 0);
       maxPanRef.current = Math.max(0, w - vp.clientWidth);
       applyPan(interactive ? panRef.current : maxPanRef.current / 2);
     };
@@ -337,12 +418,87 @@ export function SkillsPage({ reveal, interactive }: { reveal: number; interactiv
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [interactive]);
 
-  /** Pan the sky so a figure sits in the middle of the view. */
-  const panToFigure = (bi: number) => {
+  /**
+   * The boxes the chrome occupies, in viewport pixels. Not full-height
+   * columns: there is usable sky above and below each one.
+   */
+  const chromeRects = () => {
     const vp = viewportRef.current;
-    if (!vp || !skyW) return;
+    if (!vp || !interactive) return [];
+    const w = vp.clientWidth;
+    const midY = vp.clientHeight / 2;
+    // The panel's height follows its skill, so reserve a typical card rather
+    // than measuring whichever one happens to be open.
+    const rects = [{ left: w - 16 - PANEL_W, right: w - 16, top: midY - 190, bottom: midY + 190 }];
+    const rail = railRef.current;
+    if (rail) {
+      const base = vp.getBoundingClientRect();
+      const r = rail.getBoundingClientRect();
+      rects.push({
+        left: r.left - base.left,
+        right: r.right - base.left,
+        top: r.top - base.top,
+        bottom: r.bottom - base.top,
+      });
+    }
+    return rects;
+  };
+
+  /**
+   * How many of a figure's stars a given pan would leave unreachable: behind a
+   * box, or pushed off the screen. One is no better than the other, so both
+   * count.
+   */
+  const starLost = (
+    n: StarPos,
+    pan: number,
+    scale: number,
+    rects: { left: number; right: number; top: number; bottom: number }[],
+    vw: number,
+  ) => {
+    const x = n.x * scale - clamp(pan, 0, maxPanRef.current);
+    const y = n.y * scale;
+    if (x < 34 || x > vw - 34) return true;
+    return rects.some(
+      (r) => x >= r.left - 16 && x <= r.right + 16 && y >= r.top - 16 && y <= r.bottom + 16,
+    );
+  };
+
+  const lostFor = (bi: number, pan: number, scale: number) => {
+    const rects = chromeRects();
+    const vw = viewportRef.current?.clientWidth ?? 0;
+    return STARS.filter((n) => n.bi === bi && starLost(n, pan, scale, rects, vw)).length;
+  };
+
+  /**
+   * Pan the sky so a figure sits in the middle of the uncovered band.
+   *
+   * A figure wider than that band cannot fit inside it, so on paper a star has
+   * to pass behind the chrome. In practice it usually does not have to: the
+   * boxes leave sky above and below them, so nudging the sky a little drops
+   * the overhanging star into a gap. Try a few offsets around the centred
+   * position and keep whichever leaves the fewest stars covered, preferring
+   * the centred one when they tie.
+   */
+  const panToFigure = (bi: number) => {
+    if (!skyW) return;
     const scale = skyW / SKY_W;
-    applyPan(BOXES[bi].cx * scale - vp.clientWidth / 2, true);
+    const safe = safeBox();
+    const base = BOXES[bi].cx * scale - (safe.left + safe.right) / 2;
+    let best = base;
+    let bestScore = lostFor(bi, base, scale);
+    // Small steps: the gap that clears every star can be only a few dozen
+    // pixels wide, and a coarse search steps straight over it.
+    for (let off = 20; off <= 300 && bestScore > 0; off += 20) {
+      for (const candidate of [base - off, base + off]) {
+        const score = lostFor(bi, candidate, scale);
+        if (score < bestScore) {
+          bestScore = score;
+          best = candidate;
+        }
+      }
+    }
+    applyPan(best, true);
   };
 
   const focusBranch = (bi: number, alsoPan: boolean) => {
@@ -384,19 +540,58 @@ export function SkillsPage({ reveal, interactive }: { reveal: number; interactiv
   };
 
   /**
-   * Select a star and park the proof panel clear of it: the panel goes to the
-   * opposite side of the view, and only flips left when there is room beside
-   * the navigator rail.
+   * Select a star. Committing to one (a click, or arriving by keyboard) also
+   * brings it inside the uncovered band, so the star being described is never
+   * behind the panel that describes it. Hovering deliberately does not pan:
+   * the sky sliding under a moving cursor is disorienting, and a star you can
+   * hover is a star you can already see.
    */
-  const selectStar = (n: StarPos) => {
+  const selectStar = (n: StarPos, alsoPan = false) => {
     setFocusId(n.branch.id);
     setSel(n);
-    const vp = viewportRef.current;
-    if (!vp || !skyW) return;
-    const screenX = n.x * (skyW / SKY_W) - panRef.current;
-    const roomForLeft = vp.clientWidth > RAIL_CLEAR + PANEL_W + 40;
-    setPanelSide(screenX > vp.clientWidth * 0.52 && roomForLeft ? "left" : "right");
+    if (!alsoPan || !skyW) return;
+    const scale = skyW / SKY_W;
+    const safe = safeBox();
+    const ext = extentOf(n, scale, anchorFor(n, scale, safe));
+    const room = safe.right - safe.left;
+    let next = panRef.current;
+    if (ext.right - ext.left > room) {
+      // A label longer than the band cannot fit whole: keep the dot itself
+      // comfortably inside and let the text run past the edge of the band.
+      const cx = n.x * scale;
+      next = clamp(next, cx - safe.right + 40, cx - safe.left - 40);
+    } else if (ext.left - next < safe.left) {
+      next = ext.left - safe.left;
+    } else if (ext.right - next > safe.right) {
+      next = ext.right - safe.right;
+    }
+    // Pulling one star into the band can push its neighbours behind the
+    // chrome. Nudge a little further when that frees more of the figure, so
+    // long as the star being described stays inside the band itself.
+    const rects = chromeRects();
+    const vw = viewportRef.current?.clientWidth ?? 0;
+    let best = next;
+    let bestLost = lostFor(n.bi, next, scale);
+    for (let step = 20; step <= 140 && bestLost > 0; step += 20) {
+      for (const candidate of [next + step, next - step]) {
+        // The star being described has to stay reachable itself. Test that the
+        // same way everything else is tested: comparing its centre against the
+        // band's edge would turn on a rounding error, since `next` was derived
+        // from the star's outer extent rather than its centre.
+        if (starLost(n, candidate, scale, rects, vw)) continue;
+        const score = lostFor(n.bi, candidate, scale);
+        if (score < bestLost) {
+          bestLost = score;
+          best = candidate;
+        }
+      }
+    }
+    if (Math.abs(best - panRef.current) > 1) applyPan(best, true);
   };
+
+  /** Sky units to screen pixels, and the band the chrome leaves uncovered. */
+  const scale = skyW ? skyW / SKY_W : 0;
+  const safe = safeBox();
 
   const starO = 0.45 + 0.55 * smooth(reveal, 0, 0.35);
   const titleO = smooth(reveal, 0.45, 0.62);
@@ -715,7 +910,8 @@ export function SkillsPage({ reveal, interactive }: { reveal: number; interactiv
                 const halo = 12 + lv * 5.6;
                 const core = 2.1 + lv * 0.55;
                 const flare = lv >= 4 ? 11 + lv * 2.4 : 0;
-                const dx = n.anchor === "start" ? 18 : n.anchor === "end" ? -18 : 0;
+                const anchor = anchorFor(n, scale, safe);
+                const dx = anchor === "start" ? LABEL_DX : anchor === "end" ? -LABEL_DX : 0;
                 const lo = labelsOn(n.branch);
                 return (
                   <g
@@ -731,8 +927,8 @@ export function SkillsPage({ reveal, interactive }: { reveal: number; interactiv
                       transition: "opacity 0.25s ease",
                     }}
                     onMouseEnter={() => interactive && selectStar(n)}
-                    onFocus={() => interactive && selectStar(n)}
-                    onClick={() => interactive && !wasDrag() && selectStar(n)}
+                    onFocus={() => interactive && selectStar(n, true)}
+                    onClick={() => interactive && !wasDrag() && selectStar(n, true)}
                   >
                     {/* level halo (the glow IS the level) */}
                     <circle
@@ -775,10 +971,10 @@ export function SkillsPage({ reveal, interactive }: { reveal: number; interactiv
                     <text
                       x={n.x + dx}
                       y={n.y + n.dy}
-                      textAnchor={n.anchor}
+                      textAnchor={anchor}
                       className="font-mono"
                       style={{
-                        fontSize: 13.5,
+                        fontSize: LABEL_SIZE,
                         fill: isSel ? "#f4f4fb" : "#c2c9e6",
                         opacity: lo,
                         pointerEvents: "none",
@@ -842,6 +1038,7 @@ export function SkillsPage({ reveal, interactive }: { reveal: number; interactiv
           {/* navigator rail: the way in */}
           {interactive && (
             <div
+              ref={railRef}
               onMouseLeave={() => {
                 setFocusId(null);
                 setSel(null);
@@ -849,15 +1046,24 @@ export function SkillsPage({ reveal, interactive }: { reveal: number; interactiv
               style={{
                 position: "absolute",
                 left: 16,
-                top: "50%",
-                transform: "translateY(-50%)",
+                // Tucked under the SKY/LIST toggle rather than centred. Centred
+                // put it exactly where the constellations live, and the widest
+                // figure has nowhere to go that clears a box in the middle of
+                // the left edge; up here every figure has a clean resting spot,
+                // and the two controls read as one group.
+                top: 118,
                 display: "flex",
                 flexDirection: "column",
                 gap: 4,
                 padding: "12px 12px",
                 borderRadius: 10,
                 border: "1px solid rgba(122,162,247,0.22)",
-                background: "rgba(8,13,28,0.82)",
+                // Frosted, not opaque: a figure too wide for the uncovered
+                // band still reads as sky behind the chrome instead of ending
+                // at a hard edge.
+                background: "rgba(8,13,28,0.72)",
+                backdropFilter: "blur(12px)",
+                WebkitBackdropFilter: "blur(12px)",
                 opacity: chromeO,
                 zIndex: 3,
               }}
@@ -946,9 +1152,11 @@ export function SkillsPage({ reveal, interactive }: { reveal: number; interactiv
           <div
             style={{
               position: "absolute",
+              // Always the same lane, never flipped: a card that jumps sides
+              // as you browse is harder to read than one you can look back to.
               ...(active
                 ? {
-                    ...(panelSide === "left" ? { left: RAIL_CLEAR } : { right: 16 }),
+                    right: 16,
                     top: "50%",
                     transform: "translateY(-50%)",
                     width: PANEL_W,
@@ -957,7 +1165,9 @@ export function SkillsPage({ reveal, interactive }: { reveal: number; interactiv
                 : { right: 92, bottom: 86, width: 252 }),
               border: "1px solid rgba(122,162,247,0.28)",
               borderRadius: 10,
-              background: active ? "rgba(10,16,32,0.9)" : "rgba(10,16,32,0.66)",
+              background: active ? "rgba(10,16,32,0.82)" : "rgba(10,16,32,0.6)",
+              backdropFilter: "blur(14px)",
+              WebkitBackdropFilter: "blur(14px)",
               padding: active ? "16px 17px" : "10px 13px",
               opacity: chromeO * (active || !focus ? 1 : 0),
               pointerEvents: interactive && active ? "auto" : "none",
