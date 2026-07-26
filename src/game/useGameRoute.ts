@@ -31,10 +31,6 @@ export function useGameRoute() {
   const [reveal, setReveal] = useState(0);
   const [morph, setMorph] = useState(0);
   const [active, setActive] = useState<string>("title");
-  /** Overall progress through the whole page, for the HUD progress line. */
-  const [progress, setProgress] = useState(0);
-  /** Where each screen begins, as a fraction of the page, for its tick. */
-  const [ticks, setTicks] = useState<number[]>([]);
   /**
    * True while the current screen has finished animating and is there to be
    * explored. Inside a pinned sequence scrolling produces animation rather
@@ -91,25 +87,9 @@ export function useGameRoute() {
       }
       setActive((prev) => (prev === next ? prev : next));
 
-      // ---- overall progress + per-screen ticks (for the HUD line) ----
+      // Nothing left below: the cue must not promise more scrolling.
       const docRange = document.documentElement.scrollHeight - vh;
-      const docP = docRange > 0 ? clamp01(window.scrollY / docRange) : 0;
-      setProgress((prev) => (Math.abs(prev - docP) > 0.002 ? docP : prev));
       setAtEnd(docRange > 0 && window.scrollY >= docRange - 4);
-      setTicks((prev) => {
-        const marks = SCREENS.slice(1)
-          .map((s) => document.getElementById(s.id))
-          .filter((el): el is HTMLElement => !!el)
-          .map((el) =>
-            docRange > 0
-              ? clamp01((el.getBoundingClientRect().top + window.scrollY) / docRange)
-              : 0,
-          );
-        const same =
-          prev.length === marks.length &&
-          prev.every((v, i) => Math.abs(v - marks[i]) < 0.002);
-        return same ? prev : marks;
-      });
 
       // ---- has the current screen finished animating? ----
       let isSettled = false;
@@ -165,5 +145,5 @@ export function useGameRoute() {
     }
   }, []);
 
-  return { reveal, morph, active, progress, ticks, settled, atEnd };
+  return { reveal, morph, active, settled, atEnd };
 }

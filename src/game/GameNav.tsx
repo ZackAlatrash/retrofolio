@@ -33,10 +33,6 @@ interface GameNavProps {
   reveal: number;
   morph: number;
   active: string;
-  /** Overall progress through the page (0..1) for the HUD progress line. */
-  progress: number;
-  /** Where each screen begins, as a fraction of the page. */
-  ticks: number[];
 }
 
 /**
@@ -45,7 +41,7 @@ interface GameNavProps {
  * centered, spacing tightening) into a chunky HUD bar, while the player chip,
  * coin, keycap toggles and control hints boot in at the edges.
  */
-export function GameNav({ reveal, morph, active, progress, ticks }: GameNavProps) {
+export function GameNav({ reveal, morph, active }: GameNavProps) {
   const prefersReduced = useReducedMotion();
   const params =
     typeof window !== "undefined"
@@ -97,7 +93,6 @@ export function GameNav({ reveal, morph, active, progress, ticks }: GameNavProps
           pointerEvents: chromeOn ? "auto" : "none",
         }}
       >
-        {/* how far through the whole site you are, with a tick per screen */}
         <div
           aria-hidden="true"
           style={{
@@ -106,35 +101,11 @@ export function GameNav({ reveal, morph, active, progress, ticks }: GameNavProps
             right: 0,
             bottom: -4,
             height: 2,
-            background: "color-mix(in srgb, var(--term-dim) 45%, transparent)",
+            background:
+              "linear-gradient(90deg, var(--term-green), var(--term-accent) 55%, transparent)",
+            opacity: 0.55,
           }}
-        >
-          <div
-            style={{
-              width: `${Math.round(progress * 100)}%`,
-              height: "100%",
-              background:
-                "linear-gradient(90deg, var(--term-green), var(--term-accent))",
-              boxShadow: "0 0 8px color-mix(in srgb, var(--term-accent) 60%, transparent)",
-            }}
-          />
-          {ticks.map((t, i) => (
-            <span
-              key={i}
-              style={{
-                position: "absolute",
-                left: `${t * 100}%`,
-                top: -2,
-                width: 1,
-                height: 6,
-                background:
-                  progress >= t
-                    ? "var(--term-green)"
-                    : "color-mix(in srgb, var(--term-dim) 80%, transparent)",
-              }}
-            />
-          ))}
-        </div>
+        />
         <button
           onClick={() => scrollToScreen("title")}
           aria-label="Back to title"

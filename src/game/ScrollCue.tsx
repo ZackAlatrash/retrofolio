@@ -19,16 +19,25 @@ export function ScrollCue({
   show,
   settled,
   atEnd,
+  active,
 }: {
   /** Past the title screen, where the sequence's own cue has handed over. */
   show: boolean;
   settled: boolean;
   atEnd: boolean;
+  /** Current screen: the cue keeps clear of what each one puts at its foot. */
+  active: string;
 }) {
   const reduced = useReducedMotion();
   // Under reduced motion nothing is pinned, so ordinary scrolling already
   // tells the visitor everything this cue would.
-  if (reduced || !show || atEnd) return null;
+  // The credits are the end of the game and carry their own call to action, so
+  // they need no scroll cue at all.
+  if (reduced || !show || atEnd || active === "contact") return null;
+
+  // The constellation keeps its languages row at the foot of the screen; sit
+  // above it rather than on top of it.
+  const bottom = active === "skills" ? 84 : 14;
 
   return (
     <div
@@ -37,7 +46,7 @@ export function ScrollCue({
         position: "fixed",
         left: 0,
         right: 0,
-        bottom: 14,
+        bottom,
         zIndex: 45,
         display: "flex",
         justifyContent: "center",
