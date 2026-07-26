@@ -34,10 +34,14 @@ describe("ContactScreen under reduced motion", () => {
   // roll in normal flow, where every line has to remain reachable.
   it("still renders the whole roll, mask wrapper or not", () => {
     renderContact();
-    expect(screen.getByText("CREDITS")).toBeInTheDocument();
-    expect(screen.getByText(/Valid Dutch residence and work permit/)).toBeInTheDocument();
+    expect(screen.getByText("CONTACT")).toBeInTheDocument();
+    expect(
+      screen.getByText(/Valid Dutch residence and work permit/),
+    ).toBeInTheDocument();
     expect(screen.getByText(/graduating 2027/)).toBeInTheDocument();
-    expect(screen.getByRole("link", { name: /DOWNLOAD CV/i })).toBeInTheDocument();
+    expect(
+      screen.getByRole("link", { name: /DOWNLOAD CV/i }),
+    ).toBeInTheDocument();
   });
 
   it("holds the real email and no invented destination", () => {
@@ -49,12 +53,14 @@ describe("ContactScreen under reduced motion", () => {
 describe("ContactScreen with motion", () => {
   beforeEach(() => setReducedMotion(false));
 
-  // The screen label is a framed plate now, not the full-bleed gradient band
-  // it used to be: that band began at 97% black with nothing fading into it,
-  // so it drew a hard line across the whole screen.
-  it("labels the screen as the fourth stage", () => {
-    renderContact();
-    expect(screen.getByText("// STAGE 04 · CREDITS")).toBeInTheDocument();
-    expect(screen.getByText(/here is how to reach me/)).toBeInTheDocument();
+  // The roll's own title is the only heading on this screen. Everything tried
+  // above it, a full-bleed gradient band and then a framed plate, competed
+  // with this heading rather than adding to it, so nothing sits up there now
+  // and the HUD's own CONTACT highlight labels the screen.
+  it("carries one heading and no marker above it", () => {
+    const { container } = renderContact();
+    expect(screen.getByText("CONTACT")).toBeInTheDocument();
+    expect(container.textContent).not.toMatch(/STAGE 04/);
+    expect(container.textContent).not.toMatch(/THE END/);
   });
 });

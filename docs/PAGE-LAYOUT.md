@@ -124,9 +124,13 @@ down since it runs the whole site).
   notes. Signals momentum.
 - Content lives in the content model as dated entries.
 
-### Screen 6 — CREDITS (Contact) · NL
+### Screen 6 — CONTACT · NL
 - An end-of-game credits roll: GitHub, LinkedIn, email, resume download, and an
   `INSERT COIN TO CONTINUE` contact call to action. References placeholder.
+- Titled `CONTACT`, and that title is the screen's only heading. No stage marker
+  sits above it: everything tried up there competed with the heading instead of
+  adding to it, and the HUD already highlights CONTACT. The roll is masked at the
+  top of the frame so it dissolves rather than clipping on the edge.
 - No fabricated links; real destinations only.
 
 ## 4. Routing and deep links

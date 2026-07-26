@@ -5,8 +5,8 @@ import { useSettings, pick, type Lang } from "../game/settings";
 import { skyUrl } from "../showcase/showcaseData";
 
 /**
- * The final screen - CREDITS (Contact). The end of the game: the credits roll
- * up over the same night sky the constellation ends on, and settle on the
+ * The final screen - CONTACT. The end of the game: it rolls like credits up
+ * over the same night sky the constellation ends on, and settles on the
  * contact card with INSERT COIN TO CONTINUE.
  *
  * The roll doubles as the fact sheet a recruiter actually needs (role sought,
@@ -18,19 +18,12 @@ import { skyUrl } from "../showcase/showcaseData";
 const PIXEL = '"Press Start 2P", ui-monospace, monospace';
 const clamp01 = (x: number) => Math.max(0, Math.min(1, x));
 
-const HEADING = { en: "CREDITS", nl: "AFTITELING" };
 /**
- * The screen label, in the same shape as every other stage marker: the stage
- * line, then a dim line saying what the screen is for. It used to read
- * "// THE END · GET IN TOUCH", which broke the numbering the other screens
- * follow, left the plate built for two lines two thirds empty, and repeated
- * the call to action that the credits themselves already make.
+ * The roll's own title carries the screen. There is no separate stage marker
+ * above it: the HUD already highlights CONTACT, and every shape tried up there
+ * competed with this heading instead of adding to it.
  */
-const STAGE = { en: "// STAGE 04 · CREDITS", nl: "// STAGE 04 · AFTITELING" };
-const STAGE_SUB = {
-  en: "the run is over · here is how to reach me",
-  nl: "de run is voorbij · zo kun je me bereiken",
-};
+const HEADING = { en: "CONTACT", nl: "CONTACT" };
 const CONTINUE = { en: "INSERT COIN TO CONTINUE", nl: "GOOI EEN MUNT ERIN" };
 const OUTRO = {
   en: "thanks for playing · now let's build something",
@@ -195,68 +188,6 @@ export function ContactScreen() {
         }}
       >
         {/*
-          What screen this is, held still while the credits roll past.
-
-          A plate, not a band. This used to be a full-bleed gradient that began
-          at 97% black with nothing fading into it, so it drew a hard line
-          across the whole screen and then dissolved downward: one crisp edge,
-          one soft one, which reads as a smudge rather than a designed element.
-          It also landed 8px under the HUD bar, so the screen wore two dark
-          slabs with a sliver of sky between them. Framed and frosted, it
-          matches every other label on the site instead. The job the gradient
-          was really doing, keeping the roll from clipping at the top edge,
-          belongs to the roll and now lives there.
-        */}
-        {!reduced && (
-          <div
-            style={{
-              position: "absolute",
-              top: 82,
-              left: 0,
-              right: 0,
-              display: "flex",
-              justifyContent: "center",
-              zIndex: 3,
-              pointerEvents: "none",
-            }}
-          >
-            <div
-              style={{
-                textAlign: "center",
-                padding: "9px 18px 10px",
-                borderRadius: 9,
-                border: "1px solid rgba(122,162,247,0.22)",
-                background: "rgba(8,13,28,0.72)",
-                backdropFilter: "blur(12px)",
-                WebkitBackdropFilter: "blur(12px)",
-              }}
-            >
-              <div
-                className="font-mono"
-                style={{
-                  fontSize: 10.5,
-                  letterSpacing: 2,
-                  color: "var(--term-green)",
-                }}
-              >
-                {pick(lang, STAGE)}
-              </div>
-              <div
-                className="font-mono"
-                style={{
-                  fontSize: 10,
-                  letterSpacing: 0.6,
-                  color: "#9ba4ca",
-                  marginTop: 4,
-                }}
-              >
-                {pick(lang, STAGE_SUB)}
-              </div>
-            </div>
-          </div>
-        )}
-
-        {/*
           The roll dissolves as it reaches the top of the frame rather than
           clipping on it. The mask lives on this wrapper, which stays put, and
           not on the roll itself, which moves: a mask travels with its element,
@@ -271,13 +202,13 @@ export function ContactScreen() {
                   inset: 0,
                   overflow: "hidden",
                   zIndex: 1,
-                  // Held fully clear through the plate's band, then ramping in,
-                  // so a line emerges from behind the header rather than
-                  // appearing at its bottom edge looking struck through.
+                  // Held fully clear through the depth of the HUD bar, then
+                  // ramping in, so a line rises out from under the bar instead
+                  // of appearing abruptly just below it.
                   maskImage:
-                    "linear-gradient(to bottom, transparent 0, transparent 112px, #000 208px)",
+                    "linear-gradient(to bottom, transparent 0, transparent 72px, #000 172px)",
                   WebkitMaskImage:
-                    "linear-gradient(to bottom, transparent 0, transparent 112px, #000 208px)",
+                    "linear-gradient(to bottom, transparent 0, transparent 72px, #000 172px)",
                 }
           }
         >
