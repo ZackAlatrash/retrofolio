@@ -116,6 +116,58 @@ be trusted to be technically accurate, and accuracy is the whole point.
 - Author by hand: the architecture SVGs (ports and adapters, clean layers, the
   tiled-inference flow, the consent write-path).
 
+#### 2.2a Tulip field backdrop (1) — for the tiled-inference diagram
+
+The one case where the backdrop is subject matter rather than texture. The
+TulipVision method diagram overlays live SVG tiles and boxes on a field image;
+the field makes the small-object problem visible, which a flat fill cannot.
+
+**The overlay is never baked in.** Tiles, detection boxes and duplicate markers
+are drawn by the component at run time. An image containing boxes would be a
+fake screenshot of a detector whose real numbers are published two panels below.
+
+Pixel art, not photography: the backdrop sits inside the console world, so it
+follows the same 16-bit language as the shelf and the labels.
+
+**Growth stages are load-bearing, not decoration.** The diagram's first step
+shows what a downscale destroys. Mature blooms survive it; a two-pixel shoot
+does not. Rendering several stages along the rows is what makes the `missed`
+markers land on early sprouts for a visible reason rather than arbitrarily.
+
+```
+16-bit pixel art, top-down aerial view of a tulip field. Long straight parallel
+planting rows running left to right across the whole frame, dark soil furrows
+between them. Tulips at several growth stages along the rows: bare gaps, tiny
+two-pixel green shoots, taller leafing sprouts, closed buds, and a few fully
+open blooms. Limited retro palette, muted and desaturated, low contrast, flat
+shading, chunky visible pixels, light dithering. Blooms in soft violet, amber
+and dusty pink. Even overcast lighting, no strong shadows, no vignette.
+NO text, NO lettering, NO UI, NO overlays, NO bounding boxes, NO frames.
+```
+
+**Palette constraint:** keep blooms off saturated red. The diagram draws its
+duplicate-detection markers in salmon red (`#f0918c`) and its accepted boxes in
+green; red flowers underneath would compete with the one signal that step three
+exists to show.
+
+**Spec:** author at **420×280** so one art pixel equals one diagram unit and the
+tile edges land on pixel boundaries. Area-average down (never bicubic up). WebP.
+The component sets `image-rendering: pixelated`; at the rendered ~980px width
+that is a 2.34× upscale, which keeps the apparent block size close to the
+source art while staying crisp.
+**Path:** `public/game/method/tulipvision-field.webp`
+**Source art:** originals live in `art-src/`, which is gitignored. Only the
+downsampled, shipped version belongs in `public/`.
+**Wiring:** set `tiling.image` on the project to `game/method/tulipvision-field.webp`
+(no leading slash: it is joined to `import.meta.env.BASE_URL`).
+A missing file degrades to the flat fill, per the placeholder rule in §0.
+
+The sprout coordinates in the diagram are hand-placed, so they must be aligned
+to the sprouts actually visible in the chosen image once it exists. Rows help:
+generate a regularly planted field rather than a scattered one. Two of the
+coordinates must land in the tile overlap strips, or step three has no
+duplicates to remove.
+
 ### 2.3 Pixel tech icons (~20)
 
 One per stack item (Kotlin, Python, AWS, Vue, Swift…), reused across cartridges,

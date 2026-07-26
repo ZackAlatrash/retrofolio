@@ -1,5 +1,12 @@
 import { useEffect, useRef } from "react";
-import { labelUrl, shellHex, type ShowcaseEntry } from "./showcaseData";
+import { labelUrl, shellHex, showcase, type ShowcaseEntry } from "./showcaseData";
+import { SystemMap } from "./SystemMap";
+import { CoachBoundary } from "./CoachBoundary";
+import { ConsentLedger } from "./ConsentLedger";
+import { EvidenceGate } from "./EvidenceGate";
+import { VisionBench } from "./VisionBench";
+import { CommitmentClock } from "./CommitmentClock";
+import { MarketingSite } from "./MarketingSite";
 
 const PIXEL = '"Press Start 2P", ui-monospace, monospace';
 
@@ -8,6 +15,8 @@ interface DetailOverlayProps {
   onEject: () => void;
   onPrev: () => void;
   onNext: () => void;
+  /** Jump straight to another cartridge, for real cross-references. */
+  onGoTo?: (id: string) => void;
 }
 
 /**
@@ -16,8 +25,17 @@ interface DetailOverlayProps {
  * Per-project content and signature modules are designed later; this shell
  * carries the flow (ESC ejects, arrows switch projects).
  */
-export function DetailOverlay({ entry, onEject, onPrev, onNext }: DetailOverlayProps) {
+export function DetailOverlay({
+  entry,
+  onEject,
+  onPrev,
+  onNext,
+  onGoTo,
+}: DetailOverlayProps) {
   const { project } = entry;
+  const related = (project.relatedIds ?? [])
+    .map((id) => showcase.find((e) => e.id === id))
+    .filter((e): e is ShowcaseEntry => Boolean(e));
   const accent = shellHex[entry.shell];
   const ejectRef = useRef<HTMLButtonElement>(null);
 
@@ -28,8 +46,14 @@ export function DetailOverlay({ entry, onEject, onPrev, onNext }: DetailOverlayP
       if (e.key === "ArrowLeft") onPrev();
       if (e.key === "ArrowRight") onNext();
     };
+    // The help chat sits below this overlay, so anything in here that summons
+    // it has to get out of the way first or the chat opens behind the screen.
     window.addEventListener("keydown", onKey);
-    return () => window.removeEventListener("keydown", onKey);
+    window.addEventListener("zk:ask", onEject);
+    return () => {
+      window.removeEventListener("keydown", onKey);
+      window.removeEventListener("zk:ask", onEject);
+    };
   }, [onEject, onPrev, onNext]);
 
   return (
@@ -135,15 +159,21 @@ export function DetailOverlay({ entry, onEject, onPrev, onNext }: DetailOverlayP
           {/* right column */}
           <div style={{ display: "flex", flexDirection: "column", gap: 12 }}>
             <Block accent={accent} title="STATS">
-              <div style={{ display: "flex", gap: 22, flexWrap: "wrap" }}>
+              <div
+                style={{
+                  display: "grid",
+                  gridTemplateColumns: "repeat(auto-fit, minmax(84px, 1fr))",
+                  gap: 12,
+                }}
+              >
                 {(project.metrics ?? []).map((m) => (
                   <div key={m.label}>
-                    <div style={{ fontFamily: PIXEL, fontSize: 12, color: "#f4f4fb" }}>
+                    <div style={{ fontFamily: PIXEL, fontSize: 13, color: "#f4f4fb" }}>
                       {m.value}
                     </div>
                     <div
                       className="font-mono"
-                      style={{ fontSize: 9, color: "#68719c", marginTop: 4, letterSpacing: 0.5 }}
+                      style={{ fontSize: 11, color: "#98a1c6", marginTop: 5, letterSpacing: 0.4 }}
                     >
                       {m.label.toUpperCase()}
                     </div>
@@ -158,8 +188,8 @@ export function DetailOverlay({ entry, onEject, onPrev, onNext }: DetailOverlayP
                     key={s}
                     className="font-mono"
                     style={{
-                      fontSize: 10,
-                      padding: "3px 9px",
+                      fontSize: 11.5,
+                      padding: "4px 10px",
                       borderRadius: 5,
                       color: accent,
                       background: `${accent}1c`,
@@ -170,18 +200,134 @@ export function DetailOverlay({ entry, onEject, onPrev, onNext }: DetailOverlayP
                 ))}
               </div>
             </Block>
-            <Block accent={accent} title="THE STORY" dashedNote>
-              <span className="font-mono" style={{ fontSize: 11, color: "#aab2d4", lineHeight: 1.6 }}>
-                {project.problem ?? project.whatItIs} · full briefing blocks
-                (architecture, boss fight, trade-offs, gallery) are designed per
-                project in the next phase.
-              </span>
-            </Block>
-            <Block accent={accent} title="★ SIGNATURE MODULE" dashed>
-              <span className="font-mono" style={{ fontSize: 11, color: "#8a93bd", lineHeight: 1.6 }}>
-                Reserved: this project's unique interactive module lands here.
-              </span>
-            </Block>
+            {project.context && (
+              <Block accent={accent} title="FIELD REPORT">
+                <Prose>{project.context}</Prose>
+              </Block>
+            )}
+          </div>
+
+          {/* full-width briefing below the two columns */}
+          <div className="detail-full" style={{ display: "flex", flexDirection: "column", gap: 12 }}>
+            {project.systemMap && (
+              <SignatureModule accent={accent}>
+                <SystemMap map={project.systemMap} accent={accent} />
+              </SignatureModule>
+            )}
+            {project.coachBoundary && (
+              <SignatureModule accent={accent}>
+                <CoachBoundary boundary={project.coachBoundary} accent={accent} />
+              </SignatureModule>
+            )}
+            {project.consentLedger && (
+              <SignatureModule accent={accent}>
+                <ConsentLedger ledger={project.consentLedger} accent={accent} />
+              </SignatureModule>
+            )}
+            {project.evidenceGate && (
+              <SignatureModule accent={accent}>
+                <EvidenceGate gate={project.evidenceGate} accent={accent} />
+              </SignatureModule>
+            )}
+            {project.visionBench && (
+              <SignatureModule accent={accent}>
+                <VisionBench bench={project.visionBench} accent={accent} />
+              </SignatureModule>
+            )}
+            {project.commitmentClock && (
+              <SignatureModule accent={accent}>
+                <CommitmentClock clock={project.commitmentClock} accent={accent} />
+              </SignatureModule>
+            )}
+            {project.marketingSite && (
+              <SignatureModule accent={accent}>
+                <MarketingSite site={project.marketingSite} accent={accent} />
+              </SignatureModule>
+            )}
+
+            {project.problem && (
+              <Block accent={accent} title="THE PROBLEM">
+                <Prose>{project.problem}</Prose>
+              </Block>
+            )}
+            {project.architecture && (
+              <Block accent={accent} title="ARCHITECTURE">
+                <Prose>{project.architecture}</Prose>
+              </Block>
+            )}
+            {project.hardestProblem && (
+              <Block accent={accent} title="⚔ BOSS FIGHT">
+                <Prose>{project.hardestProblem}</Prose>
+              </Block>
+            )}
+            {project.tradeoffs && (
+              <Block accent={accent} title="TRADE-OFFS">
+                <Prose>{project.tradeoffs}</Prose>
+              </Block>
+            )}
+            {project.limitations && (
+              <Block accent={accent} title="KNOWN LIMITS">
+                <Prose>{project.limitations}</Prose>
+              </Block>
+            )}
+            {related.length > 0 && onGoTo && (
+              <Block accent={accent} title="PART OF">
+                <div style={{ display: "flex", gap: 8, flexWrap: "wrap" }}>
+                  {related.map((r) => (
+                    <button
+                      key={r.id}
+                      onClick={() => onGoTo(r.id)}
+                      className="font-mono coach-chip"
+                      style={{
+                        display: "flex",
+                        alignItems: "center",
+                        gap: 8,
+                        fontSize: 12,
+                        padding: "6px 11px",
+                        borderRadius: 7,
+                        cursor: "pointer",
+                        color: "#eef0fa",
+                        background: "rgba(34,41,71,0.95)",
+                        borderStyle: "solid",
+                        borderWidth: 1,
+                        borderBottomWidth: 2,
+                        borderColor: shellHex[r.shell],
+                      }}
+                    >
+                      <span
+                        aria-hidden="true"
+                        style={{
+                          width: 9,
+                          height: 9,
+                          borderRadius: 2,
+                          background: shellHex[r.shell],
+                          flex: "none",
+                        }}
+                      />
+                      {r.project.name} ▸
+                    </button>
+                  ))}
+                </div>
+              </Block>
+            )}
+            {project.links && project.links.length > 0 && (
+              <Block accent={accent} title="LINKS">
+                <div style={{ display: "flex", gap: 10, flexWrap: "wrap" }}>
+                  {project.links.map((l) => (
+                    <a
+                      key={l.href}
+                      href={l.href}
+                      target="_blank"
+                      rel="noreferrer"
+                      className="font-mono"
+                      style={{ fontSize: 11, color: accent }}
+                    >
+                      {l.label} ↗
+                    </a>
+                  ))}
+                </div>
+              </Block>
+            )}
           </div>
         </div>
       </div>
@@ -243,6 +389,40 @@ function BarButton({
   );
 }
 
+/** The frame around a project's one distinctive interactive module. */
+function SignatureModule({
+  accent,
+  children,
+}: {
+  accent: string;
+  children: React.ReactNode;
+}) {
+  return (
+    <div
+      style={{
+        border: `1px solid ${accent}44`,
+        borderRadius: 9,
+        padding: "12px 13px",
+        background: "rgba(16,20,36,0.55)",
+      }}
+    >
+      {children}
+    </div>
+  );
+}
+
+/** Body copy inside a briefing block. */
+function Prose({ children }: { children: React.ReactNode }) {
+  return (
+    <p
+      className="font-mono"
+      style={{ fontSize: 12.5, color: "#c6cce6", lineHeight: 1.7, margin: 0 }}
+    >
+      {children}
+    </p>
+  );
+}
+
 function Block({
   accent,
   title,
@@ -268,9 +448,9 @@ function Block({
       <div
         style={{
           fontFamily: PIXEL,
-          fontSize: 8,
+          fontSize: 10,
           color: accent,
-          marginBottom: 8,
+          marginBottom: 10,
           letterSpacing: 0.5,
         }}
       >

@@ -344,6 +344,88 @@ body {
   grid-template-columns: 1.05fr 0.95fr;
   gap: 14px;
 }
+/* The briefing and the system map run under both columns, not beside them. */
+.detail-full {
+  grid-column: 1 / -1;
+}
+
+/* Every rail uses the same column count, so a stage box is one size across the
+   whole map. Narrow screens step down rather than crushing 7 across. */
+.stage-grid {
+  display: grid;
+  grid-template-columns: repeat(var(--cols), minmax(0, 1fr));
+  /* Once the grid wraps, each row would otherwise size to its own tallest box
+     and the rail would look stepped. */
+  grid-auto-rows: 1fr;
+  align-items: stretch;
+  gap: 8px;
+  list-style: none;
+  margin: 11px 0 0;
+  padding: 0;
+}
+@media (max-width: 900px) {
+  .stage-grid {
+    grid-template-columns: repeat(4, minmax(0, 1fr));
+  }
+}
+@media (max-width: 560px) {
+  .stage-grid {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
+}
+
+/* A stage node is a button, so it has to read as one before it is hovered. */
+.stage-node {
+  transition:
+    background 140ms ease,
+    border-color 140ms ease,
+    transform 140ms ease;
+}
+.stage-node:hover,
+.coach-chip:hover {
+  background: rgba(52, 62, 108, 0.98) !important;
+  border-color: #a3aee6 !important;
+  transform: translateY(-1px);
+}
+/* Presses in like a key, so the whole card reads as the control it is. */
+.stage-node:active,
+.coach-chip:active {
+  transform: translateY(1px);
+}
+.stage-node:focus-visible,
+.stage-switch:focus-visible,
+.coach-chip:focus-visible {
+  outline: 2px solid #cbd2f0;
+  outline-offset: 2px;
+}
+.coach-chip {
+  transition:
+    background 140ms ease,
+    border-color 140ms ease,
+    transform 140ms ease;
+}
+.stage-chevron {
+  transition: transform 140ms ease;
+}
+.stage-node:hover .stage-chevron {
+  transform: translateY(2px);
+}
+.stage-node[aria-expanded="true"]:hover .stage-chevron {
+  transform: rotate(180deg) translateY(2px);
+}
+@media (prefers-reduced-motion: reduce) {
+  .stage-node,
+  .stage-chevron,
+  .coach-chip {
+    transition: none;
+  }
+  .stage-node:hover,
+  .stage-node:active,
+  .coach-chip:hover,
+  .coach-chip:active {
+    transform: none;
+  }
+}
 @media (max-width: 780px) {
   .detail-grid {
     grid-template-columns: 1fr;

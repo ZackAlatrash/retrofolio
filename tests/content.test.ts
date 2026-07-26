@@ -69,6 +69,33 @@ describe("project inventory", () => {
   });
 });
 
+describe("project links", () => {
+  it("are absolute https URLs, never placeholders", () => {
+    // The standing rule is that links are real. A relative or example URL on a
+    // portfolio is worse than no link at all.
+    for (const p of projects) {
+      for (const link of p.links ?? []) {
+        expect(link.label, `${p.id} link label`).toBeTruthy();
+        expect(() => new URL(link.href), `${p.id} href is a URL`).not.toThrow();
+        expect(new URL(link.href).protocol, `${p.id} href is https`).toBe("https:");
+        expect(link.href, `${p.id} href is not a placeholder`).not.toMatch(
+          /example\.|localhost|your-|TODO/i,
+        );
+      }
+    }
+  });
+
+  it("keeps a live project's status consistent with having a live link", () => {
+    for (const p of projects) {
+      if (!p.status.includes("live")) continue;
+      expect(p.metrics ?? [], `${p.id} says where it is live`).toBeTruthy();
+    }
+    // The two Kukis projects are live, and the shelf colours them from status.
+    expect(getProject("kukis")!.status).toContain("live");
+    expect(getProject("consented-cart")!.status).toContain("live");
+  });
+});
+
 describe("profile", () => {
   it("has identity, metrics, pillars, and skill groups", () => {
     expect(profile.name).toBeTruthy();

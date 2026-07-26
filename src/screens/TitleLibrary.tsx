@@ -453,11 +453,10 @@ export function TitleLibrary() {
     );
   };
 
-  const step = (dir: 1 | -1) => {
-    const id = flowRef.current.bootId;
-    if (!id) return;
-    const idx = showcase.findIndex((e) => e.id === id);
-    const next = showcase[(idx + dir + showcase.length) % showcase.length];
+  /** Swap the booted cartridge for another, wherever it is on the shelf. */
+  const goTo = (nextId: string) => {
+    const next = showcase.find((e) => e.id === nextId);
+    if (!next || next.id === flowRef.current.bootId) return;
     visitedRef.current.add(next.id);
     setSelectedId(next.id);
     // The seated cart swaps too, so the right one flies home on eject.
@@ -471,6 +470,13 @@ export function TitleLibrary() {
     }
     applyFlow({ phase: "detail", bootId: next.id, fast: true });
     history.replaceState(null, "", `#project-${next.id}/detail`);
+  };
+
+  const step = (dir: 1 | -1) => {
+    const id = flowRef.current.bootId;
+    if (!id) return;
+    const idx = showcase.findIndex((e) => e.id === id);
+    goTo(showcase[(idx + dir + showcase.length) % showcase.length].id);
   };
 
   // Marks the shelf spot a cartridge left from (the faint ghost slot).
@@ -1546,6 +1552,7 @@ export function TitleLibrary() {
           onEject={eject}
           onPrev={() => step(-1)}
           onNext={() => step(1)}
+          onGoTo={goTo}
         />
       )}
     </div>
@@ -1936,6 +1943,10 @@ function ReducedTitleLibrary({ lang }: { lang: Lang }) {
             onEject={() => setDetailId(null)}
             onPrev={() => stepReduced(-1)}
             onNext={() => stepReduced(1)}
+            onGoTo={(id) => {
+              setSelectedId(id);
+              setDetailId(id);
+            }}
           />
         )}
       </section>
