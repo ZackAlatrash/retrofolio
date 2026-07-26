@@ -148,7 +148,10 @@ function streamToResponse(parsed: ParsedStream): AskResponse {
 
 async function postOnce(question: string, opts: AskOptions): Promise<Response> {
   const doFetch = opts.fetchImpl ?? fetch;
-  const endpoint = opts.endpoint ?? "/api/ask";
+  // Base-relative: on a project host the site lives under a subpath. A static
+  // host has no serverless runtime at all, so this 404s there and `ask` falls
+  // back to the local answer, which is the intended behaviour.
+  const endpoint = opts.endpoint ?? `${import.meta.env.BASE_URL}api/ask`;
   return doFetch(endpoint, {
     method: "POST",
     headers: { "Content-Type": "application/json" },

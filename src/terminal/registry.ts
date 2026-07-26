@@ -127,7 +127,15 @@ function resumeHandler(ctx: CommandContext): CommandResult {
   if (download) {
     return {
       lines: [line("Downloading resume PDF...", "success")],
-      effects: [{ type: "download", url: "/resume.pdf", filename: "Ziad-Alatrash-Resume.pdf" }],
+      // Built from the base, not rooted: on a project host the site lives
+      // under a subpath and a rooted URL would miss the file entirely.
+      effects: [
+        {
+          type: "download",
+          url: `${import.meta.env.BASE_URL}resume.pdf`,
+          filename: "Ziad-Alatrash-Resume.pdf",
+        },
+      ],
     };
   }
   return {

@@ -1,0 +1,62 @@
+name: Deploy to GitHub Pages
+
+on:
+  push:
+    branches: [main]
+  # So a failed deploy can be retried without an empty commit.
+  workflow_dispatch:
+
+# GitHub Pages needs to write the deployment; nothing else does.
+permissions:
+  contents: read
+  pages: write
+  id-token: write
+
+# Never let two deploys race. In-progress runs finish rather than being
+# cancelled, so a half-uploaded artifact can't become the live site.
+concurrency:
+  group: pages
+  cancel-in-progress: false
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: npm
+      - run: npm ci
+
+      # The same gates CI runs. A broken build should not reach the live site
+      # just because it was pushed to main.
+      - name: Typecheck
+        run: npm run typecheck
+      - name: Unit tests
+        run: npm test
+
+      - name: Build
+        # A project site is served from /<repo>/, so every asset URL has to be
+        # built against that prefix rather than the domain root.
+        run: VITE_BASE="/${GITHUB_REPOSITORY#*/}/" npm run build
+
+      # Pages would otherwise hand the artifact to Jekyll, which skips paths
+      # beginning with an underscore.
+      - name: Disable Jekyll
+        run: touch dist/.nojekyll
+
+      - uses: actions/configure-pages@v5
+      - uses: actions/upload-pages-artifact@v3
+        with:
+          path: dist
+
+  deploy:
+    needs: build
+    runs-on: ubuntu-latest
+    environment:
+      name: github-pages
+      url: ${{ steps.deployment.outputs.page_url }}
+    steps:
+      - id: deployment
+        uses: actions/deploy-pages@v4
