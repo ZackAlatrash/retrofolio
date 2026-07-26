@@ -42,10 +42,16 @@ const COPY = { en: "COPY", nl: "KOPIEER" };
 const COPIED = { en: "COPIED", nl: "GEKOPIEERD" };
 
 /** The roll: the facts a recruiter is actually looking for, in plain terms. */
-const ROLES: { label: { en: string; nl: string }; value: { en: string; nl: string } }[] = [
+const ROLES: {
+  label: { en: string; nl: string };
+  value: { en: string; nl: string };
+}[] = [
   {
     label: { en: "PLAYER 1", nl: "SPELER 1" },
-    value: { en: "Zack Alatrash · AI/LLM systems engineer", nl: "Zack Alatrash · AI/LLM systems engineer" },
+    value: {
+      en: "Zack Alatrash · AI/LLM systems engineer",
+      nl: "Zack Alatrash · AI/LLM systems engineer",
+    },
   },
   {
     label: { en: "LOOKING FOR", nl: "OP ZOEK NAAR" },
@@ -188,177 +194,253 @@ export function ContactScreen() {
           padding: reduced ? "84px 20px 64px" : undefined,
         }}
       >
-        {/* what screen this is, held still while the credits roll under it */}
+        {/*
+          What screen this is, held still while the credits roll past.
+
+          A plate, not a band. This used to be a full-bleed gradient that began
+          at 97% black with nothing fading into it, so it drew a hard line
+          across the whole screen and then dissolved downward: one crisp edge,
+          one soft one, which reads as a smudge rather than a designed element.
+          It also landed 8px under the HUD bar, so the screen wore two dark
+          slabs with a sliver of sky between them. Framed and frosted, it
+          matches every other label on the site instead. The job the gradient
+          was really doing, keeping the roll from clipping at the top edge,
+          belongs to the roll and now lives there.
+        */}
         {!reduced && (
           <div
             style={{
               position: "absolute",
-              top: 66,
+              top: 82,
               left: 0,
               right: 0,
-              textAlign: "center",
+              display: "flex",
+              justifyContent: "center",
               zIndex: 3,
               pointerEvents: "none",
-              // deep enough that the credits pass cleanly under the header
-              background:
-                "linear-gradient(to bottom, rgba(5,8,26,0.97) 45%, rgba(5,8,26,0.75) 72%, transparent)",
-              paddingTop: 10,
-              paddingBottom: 54,
             }}
           >
             <div
-              className="font-mono"
-              style={{ fontSize: 10.5, letterSpacing: 2, color: "var(--term-green)" }}
+              style={{
+                textAlign: "center",
+                padding: "9px 18px 10px",
+                borderRadius: 9,
+                border: "1px solid rgba(122,162,247,0.22)",
+                background: "rgba(8,13,28,0.72)",
+                backdropFilter: "blur(12px)",
+                WebkitBackdropFilter: "blur(12px)",
+              }}
             >
-              {pick(lang, STAGE)}
-            </div>
-            <div
-              className="font-mono"
-              style={{ fontSize: 10, letterSpacing: 0.6, color: "#9ba4ca", marginTop: 4 }}
-            >
-              {pick(lang, STAGE_SUB)}
-            </div>
-          </div>
-        )}
-
-        <div
-          ref={rollRef}
-          style={{
-            position: reduced ? "relative" : "absolute",
-            left: 0,
-            right: 0,
-            transform: reduced ? undefined : `translateY(${y}px)`,
-            display: "flex",
-            flexDirection: "column",
-            alignItems: "center",
-            gap: 40,
-            padding: "0 20px",
-            willChange: "transform",
-          }}
-        >
-          <div
-            style={{
-              fontFamily: PIXEL,
-              fontSize: "clamp(20px, 3.6vw, 34px)",
-              color: "#f4f4fb",
-              textShadow: "3px 3px 0 #4a2f9e",
-              letterSpacing: 2,
-            }}
-          >
-            {pick(lang, HEADING)}
-          </div>
-
-          {ROLES.map((r) => (
-            <div key={r.label.en} style={{ textAlign: "center", maxWidth: 760 }}>
               <div
+                className="font-mono"
                 style={{
-                  fontFamily: PIXEL,
-                  fontSize: 11,
-                  color: "#8fb6ff",
-                  letterSpacing: 1.5,
-                  marginBottom: 14,
+                  fontSize: 10.5,
+                  letterSpacing: 2,
+                  color: "var(--term-green)",
                 }}
               >
-                {pick(lang, r.label)}
+                {pick(lang, STAGE)}
               </div>
               <div
                 className="font-mono"
                 style={{
-                  fontSize: "clamp(16px, 1.9vw, 21px)",
-                  color: "#eef1fa",
-                  lineHeight: 1.55,
+                  fontSize: 10,
+                  letterSpacing: 0.6,
+                  color: "#9ba4ca",
+                  marginTop: 4,
                 }}
               >
-                {pick(lang, r.value)}
+                {pick(lang, STAGE_SUB)}
               </div>
             </div>
-          ))}
+          </div>
+        )}
 
-          {/* the last card: how to reach me */}
+        {/*
+          The roll dissolves as it reaches the top of the frame rather than
+          clipping on it. The mask lives on this wrapper, which stays put, and
+          not on the roll itself, which moves: a mask travels with its element,
+          so on the roll the fade would slide up the page with the credits.
+        */}
+        <div
+          style={
+            reduced
+              ? undefined
+              : {
+                  position: "absolute",
+                  inset: 0,
+                  overflow: "hidden",
+                  zIndex: 1,
+                  // Held fully clear through the plate's band, then ramping in,
+                  // so a line emerges from behind the header rather than
+                  // appearing at its bottom edge looking struck through.
+                  maskImage:
+                    "linear-gradient(to bottom, transparent 0, transparent 112px, #000 208px)",
+                  WebkitMaskImage:
+                    "linear-gradient(to bottom, transparent 0, transparent 112px, #000 208px)",
+                }
+          }
+        >
           <div
+            ref={rollRef}
             style={{
-              marginTop: 20,
-              width: "min(680px, 100%)",
-              border: "2px solid rgba(122,162,247,0.45)",
-              borderRadius: 16,
-              background: "rgba(10,16,34,0.9)",
-              boxShadow: "0 30px 80px rgba(0,0,0,0.6), 0 0 70px rgba(122,162,247,0.16)",
-              padding: "32px 26px",
-              textAlign: "center",
+              position: reduced ? "relative" : "absolute",
+              left: 0,
+              right: 0,
+              transform: reduced ? undefined : `translateY(${y}px)`,
+              display: "flex",
+              flexDirection: "column",
+              alignItems: "center",
+              gap: 40,
+              padding: "0 20px",
+              willChange: "transform",
             }}
           >
             <div
-              className="press-blink"
               style={{
                 fontFamily: PIXEL,
-                fontSize: "clamp(12px, 1.8vw, 16px)",
-                color: "#fff",
-                textShadow: "0 0 14px rgba(122,162,247,0.7)",
+                fontSize: "clamp(20px, 3.6vw, 34px)",
+                color: "#f4f4fb",
+                textShadow: "3px 3px 0 #4a2f9e",
+                letterSpacing: 2,
               }}
             >
-              ▸ {pick(lang, CONTINUE)}
+              {pick(lang, HEADING)}
             </div>
+
+            {ROLES.map((r) => (
+              <div
+                key={r.label.en}
+                style={{ textAlign: "center", maxWidth: 760 }}
+              >
+                <div
+                  style={{
+                    fontFamily: PIXEL,
+                    fontSize: 11,
+                    color: "#8fb6ff",
+                    letterSpacing: 1.5,
+                    marginBottom: 14,
+                  }}
+                >
+                  {pick(lang, r.label)}
+                </div>
+                <div
+                  className="font-mono"
+                  style={{
+                    fontSize: "clamp(16px, 1.9vw, 21px)",
+                    color: "#eef1fa",
+                    lineHeight: 1.55,
+                  }}
+                >
+                  {pick(lang, r.value)}
+                </div>
+              </div>
+            ))}
+
+            {/* the last card: how to reach me */}
+            <div
+              style={{
+                marginTop: 20,
+                width: "min(680px, 100%)",
+                border: "2px solid rgba(122,162,247,0.45)",
+                borderRadius: 16,
+                background: "rgba(10,16,34,0.9)",
+                boxShadow:
+                  "0 30px 80px rgba(0,0,0,0.6), 0 0 70px rgba(122,162,247,0.16)",
+                padding: "32px 26px",
+                textAlign: "center",
+              }}
+            >
+              <div
+                className="press-blink"
+                style={{
+                  fontFamily: PIXEL,
+                  fontSize: "clamp(12px, 1.8vw, 16px)",
+                  color: "#fff",
+                  textShadow: "0 0 14px rgba(122,162,247,0.7)",
+                }}
+              >
+                ▸ {pick(lang, CONTINUE)}
+              </div>
+              <div
+                className="font-mono"
+                style={{
+                  fontSize: 14,
+                  color: "#9aa3c8",
+                  margin: "16px 0 26px",
+                }}
+              >
+                {pick(lang, OUTRO)}
+              </div>
+
+              <div
+                style={{
+                  fontFamily: PIXEL,
+                  fontSize: 9,
+                  color: "#68719c",
+                  letterSpacing: 1.5,
+                  marginBottom: 14,
+                }}
+              >
+                {pick(lang, REACH)}
+              </div>
+
+              <div
+                style={{
+                  display: "flex",
+                  flexWrap: "wrap",
+                  gap: 12,
+                  justifyContent: "center",
+                }}
+              >
+                <EmailTile email={profile.email} lang={lang} />
+                <Link
+                  href={profile.github}
+                  label="GITHUB"
+                  value="ZackAlatrash"
+                />
+                <Link
+                  href={profile.linkedin}
+                  label="LINKEDIN"
+                  value="ziad-alatrash"
+                />
+              </div>
+
+              <a
+                href={RESUME_URL}
+                // so it lands in their downloads folder with his name on it
+                download="Ziad_Alatrash_CV.pdf"
+                style={{
+                  display: "inline-flex",
+                  alignItems: "center",
+                  gap: 10,
+                  marginTop: 18,
+                  padding: "13px 22px",
+                  borderRadius: 9,
+                  textDecoration: "none",
+                  fontFamily: PIXEL,
+                  fontSize: 10,
+                  letterSpacing: 1,
+                  color: "#06091a",
+                  background: "var(--term-green)",
+                  boxShadow: "0 0 24px rgba(158,206,106,0.35)",
+                }}
+              >
+                ⇩ {pick(lang, RESUME_LABEL)}
+              </a>
+            </div>
+
             <div
               className="font-mono"
-              style={{ fontSize: 14, color: "#9aa3c8", margin: "16px 0 26px" }}
-            >
-              {pick(lang, OUTRO)}
-            </div>
-
-            <div
               style={{
-                fontFamily: PIXEL,
-                fontSize: 9,
-                color: "#68719c",
-                letterSpacing: 1.5,
-                marginBottom: 14,
-              }}
-            >
-              {pick(lang, REACH)}
-            </div>
-
-            <div
-              style={{
-                display: "flex",
-                flexWrap: "wrap",
-                gap: 12,
-                justifyContent: "center",
-              }}
-            >
-              <EmailTile email={profile.email} lang={lang} />
-              <Link href={profile.github} label="GITHUB" value="ZackAlatrash" />
-              <Link href={profile.linkedin} label="LINKEDIN" value="ziad-alatrash" />
-            </div>
-
-            <a
-              href={RESUME_URL}
-              // so it lands in their downloads folder with his name on it
-              download="Ziad_Alatrash_CV.pdf"
-              style={{
-                display: "inline-flex",
-                alignItems: "center",
-                gap: 10,
-                marginTop: 18,
-                padding: "13px 22px",
-                borderRadius: 9,
-                textDecoration: "none",
-                fontFamily: PIXEL,
-                fontSize: 10,
+                fontSize: 11,
+                color: "#565f89",
                 letterSpacing: 1,
-                color: "#06091a",
-                background: "var(--term-green)",
-                boxShadow: "0 0 24px rgba(158,206,106,0.35)",
+                paddingBottom: 8,
               }}
             >
-              ⇩ {pick(lang, RESUME_LABEL)}
-            </a>
-          </div>
-
-          <div
-            className="font-mono"
-            style={{ fontSize: 11, color: "#565f89", letterSpacing: 1, paddingBottom: 8 }}
-          >
-            © 2026 ZACK ALATRASH · {profile.location.toUpperCase()}
+              © 2026 ZACK ALATRASH · {profile.location.toUpperCase()}
+            </div>
           </div>
         </div>
       </div>
@@ -425,7 +507,14 @@ function EmailTile({ email, lang }: { email: string; lang: Lang }) {
           textDecoration: "none",
         }}
       >
-        <span style={{ fontFamily: PIXEL, fontSize: 8, color: "#8fb6ff", letterSpacing: 1 }}>
+        <span
+          style={{
+            fontFamily: PIXEL,
+            fontSize: 8,
+            color: "#8fb6ff",
+            letterSpacing: 1,
+          }}
+        >
           EMAIL
         </span>
         <span className="font-mono" style={{ fontSize: 13, color: "#eef1fa" }}>
@@ -489,7 +578,14 @@ function Link({
         border: `1px solid ${primary ? "rgba(122,162,247,0.65)" : "rgba(122,162,247,0.28)"}`,
       }}
     >
-      <span style={{ fontFamily: PIXEL, fontSize: 8, color: "#8fb6ff", letterSpacing: 1 }}>
+      <span
+        style={{
+          fontFamily: PIXEL,
+          fontSize: 8,
+          color: "#8fb6ff",
+          letterSpacing: 1,
+        }}
+      >
         {label}
       </span>
       <span className="font-mono" style={{ fontSize: 13, color: "#eef1fa" }}>
