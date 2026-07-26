@@ -19,7 +19,18 @@ const PIXEL = '"Press Start 2P", ui-monospace, monospace';
 const clamp01 = (x: number) => Math.max(0, Math.min(1, x));
 
 const HEADING = { en: "CREDITS", nl: "AFTITELING" };
-const STAGE = { en: "// THE END · GET IN TOUCH", nl: "// EINDE · NEEM CONTACT OP" };
+/**
+ * The screen label, in the same shape as every other stage marker: the stage
+ * line, then a dim line saying what the screen is for. It used to read
+ * "// THE END · GET IN TOUCH", which broke the numbering the other screens
+ * follow, left the plate built for two lines two thirds empty, and repeated
+ * the call to action that the credits themselves already make.
+ */
+const STAGE = { en: "// STAGE 04 · CREDITS", nl: "// STAGE 04 · AFTITELING" };
+const STAGE_SUB = {
+  en: "the run is over · here is how to reach me",
+  nl: "de run is voorbij · zo kun je me bereiken",
+};
 const CONTINUE = { en: "INSERT COIN TO CONTINUE", nl: "GOOI EEN MUNT ERIN" };
 const OUTRO = {
   en: "thanks for playing · now let's build something",
@@ -197,9 +208,15 @@ export function ContactScreen() {
           >
             <div
               className="font-mono"
-              style={{ fontSize: 11, letterSpacing: 2, color: "var(--term-green)" }}
+              style={{ fontSize: 10.5, letterSpacing: 2, color: "var(--term-green)" }}
             >
               {pick(lang, STAGE)}
+            </div>
+            <div
+              className="font-mono"
+              style={{ fontSize: 10, letterSpacing: 0.6, color: "#9ba4ca", marginTop: 4 }}
+            >
+              {pick(lang, STAGE_SUB)}
             </div>
           </div>
         )}
