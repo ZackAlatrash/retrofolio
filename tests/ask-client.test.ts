@@ -60,6 +60,20 @@ describe("ask dev fallback", () => {
     expect(res.citations.length).toBeGreaterThan(0);
   });
 
+  // A static host does not 404 a POST to a path that exists as nothing: it
+  // refuses the method. GitHub Pages answers 405. Treating that as a server
+  // error would show "something went wrong" on every question asked on the
+  // deployed site, when the grounded local answer was available all along.
+  it.each([405, 501])("falls back locally when a static host answers %i", async (status) => {
+    const fetchImpl = vi.fn(async () => new Response("", { status }));
+    const res = await ask("What is his strongest project?", {
+      fetchImpl: fetchImpl as unknown as typeof fetch,
+    });
+    expect(fetchImpl).toHaveBeenCalledTimes(1);
+    expect(res.status).toBe("degraded");
+    expect(res.citations.length).toBeGreaterThan(0);
+  });
+
   it("retries once on a network error, then falls back locally", async () => {
     const fetchImpl = vi.fn(async () => {
       throw new Error("network down");

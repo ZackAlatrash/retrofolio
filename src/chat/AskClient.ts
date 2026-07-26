@@ -192,8 +192,11 @@ export async function ask(question: string, opts: AskOptions = {}): Promise<AskR
         return localAnswer(question, opts);
       }
 
-      if (res.status === 404) {
-        // No serverless runtime (vite dev): use the client-side fallback.
+      // No serverless runtime behind this build. A dev server simply has no
+      // such route (404), while a static host refuses the method outright:
+      // GitHub Pages answers a POST with 405, and some hosts with 501. None of
+      // them are failures worth showing the visitor, so answer locally.
+      if (res.status === 404 || res.status === 405 || res.status === 501) {
         return localAnswer(question, opts);
       }
 
