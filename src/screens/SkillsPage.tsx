@@ -56,9 +56,25 @@ const LABEL_SIZE = 13.5;
 const LABEL_CHAR_W = LABEL_SIZE * 0.602;
 /** How far a beside-the-star label sits off its dot. */
 const LABEL_DX = 18;
+/** Constellation-name metrics in sky units: the pixel face plus its tracking. */
+const TITLE_CHAR_W = 14;
+/** How far above its figure a constellation name sits. */
+const TITLE_RISE = 70;
+/** Height of the sky chart's track (the whole sky, in miniature). */
+const CHART_H = 22;
+/** The sky chart sits in the panel's lane, level with the SKY/LIST toggle. */
+const CHART_TOP = 68;
 
-/** The sky world, in SVG units. Wider than a viewport: it pans. */
-const SKY_W = 1900;
+/**
+ * The sky world, in SVG units. Wider than a viewport: it pans.
+ *
+ * The figures reach x 1731, and the rest is deliberate margin. The last figure
+ * used to sit hard against the world's edge, so at maximum pan its name still
+ * fell inside the proof panel's lane and no amount of panning could free it.
+ * The scale is set by the viewport's height, not this, so the extra width buys
+ * travel room without changing the size or position of anything.
+ */
+const SKY_W = 2040;
 const SKY_H = 740;
 
 type Anchor = "start" | "middle" | "end";
@@ -299,6 +315,8 @@ export function SkillsPage({ reveal, interactive }: { reveal: number; interactiv
   const viewportRef = useRef<HTMLDivElement>(null);
   const worldRef = useRef<HTMLDivElement>(null);
   const railRef = useRef<HTMLDivElement>(null);
+  const chartRef = useRef<HTMLDivElement>(null);
+  const chartDragRef = useRef(false);
   const panRef = useRef(0);
   const maxPanRef = useRef(0);
   const dragRef = useRef<{ startX: number; startPan: number; moved: boolean } | null>(null);
@@ -308,6 +326,8 @@ export function SkillsPage({ reveal, interactive }: { reveal: number; interactiv
   const [panX, setPanX] = useState(0);
   /** Measured, because the rail is only as wide as the longest branch name. */
   const [railW, setRailW] = useState(0);
+  /** The visible slice of sky, for the chart's window. */
+  const [vpW, setVpW] = useState(0);
 
   /** Move the sky. Clamped to its own bounds, so it can never overscroll. */
   const applyPan = (x: number, animate = false) => {
@@ -391,6 +411,7 @@ export function SkillsPage({ reveal, interactive }: { reveal: number; interactiv
     const measure = () => {
       const w = Math.max(vp.clientWidth, vp.clientHeight * (SKY_W / SKY_H));
       setSkyW(w);
+      setVpW(vp.clientWidth);
       setRailW(railRef.current?.offsetWidth ?? 0);
       maxPanRef.current = Math.max(0, w - vp.clientWidth);
       applyPan(interactive ? panRef.current : maxPanRef.current / 2);
@@ -426,10 +447,18 @@ export function SkillsPage({ reveal, interactive }: { reveal: number; interactiv
     const vp = viewportRef.current;
     if (!vp || !interactive) return [];
     const w = vp.clientWidth;
-    const midY = vp.clientHeight / 2;
-    // The panel's height follows its skill, so reserve a typical card rather
-    // than measuring whichever one happens to be open.
-    const rects = [{ left: w - 16 - PANEL_W, right: w - 16, top: midY - 190, bottom: midY + 190 }];
+    const h = vp.clientHeight;
+    const midY = h / 2;
+    const rects = [
+      // The panel's height follows its skill, so reserve a typical card rather
+      // than measuring whichever one happens to be open.
+      { left: w - 16 - PANEL_W, right: w - 16, top: midY - 190, bottom: midY + 190 },
+      // The sky chart shares the panel's lane, above it.
+      { left: w - 16 - PANEL_W, right: w - 16, top: CHART_TOP, bottom: CHART_TOP + 62 },
+      // The two travel arrows.
+      { left: 10, right: 44, top: h * 0.78 - 23, bottom: h * 0.78 + 23 },
+      { left: w - 44, right: w - 10, top: h * 0.78 - 23, bottom: h * 0.78 + 23 },
+    ];
     const rail = railRef.current;
     if (rail) {
       const base = vp.getBoundingClientRect();
@@ -467,7 +496,21 @@ export function SkillsPage({ reveal, interactive }: { reveal: number; interactiv
   const lostFor = (bi: number, pan: number, scale: number) => {
     const rects = chromeRects();
     const vw = viewportRef.current?.clientWidth ?? 0;
-    return STARS.filter((n) => n.bi === bi && starLost(n, pan, scale, rects, vw)).length;
+    const stars = STARS.filter((n) => n.bi === bi && starLost(n, pan, scale, rects, vw)).length;
+    // The figure's name is part of the figure. It is wide and it sits high, so
+    // it is the piece most likely to slide under the sky chart.
+    const box = BOXES[bi];
+    const half = ((skillBranches[bi].name.length * TITLE_CHAR_W) / 2) * scale;
+    const cx = box.cx * scale - clamp(pan, 0, maxPanRef.current);
+    const ty = (box.top - TITLE_RISE) * scale;
+    const nameHidden = rects.some(
+      (r) =>
+        cx + half >= r.left - 8 &&
+        cx - half <= r.right + 8 &&
+        ty >= r.top - 18 &&
+        ty <= r.bottom + 6,
+    );
+    return stars + (nameHidden ? 1 : 0);
   };
 
   /**
@@ -502,7 +545,11 @@ export function SkillsPage({ reveal, interactive }: { reveal: number; interactiv
   };
 
   const focusBranch = (bi: number, alsoPan: boolean) => {
-    setFocusId(skillBranches[bi].id);
+    const id = skillBranches[bi].id;
+    setFocusId(id);
+    // Moving to another constellation makes the open card a leftover from a
+    // figure that is no longer on screen, contradicting the focus.
+    if (sel && sel.branch.id !== id) setSel(null);
     if (alsoPan) panToFigure(bi);
   };
 
@@ -525,6 +572,31 @@ export function SkillsPage({ reveal, interactive }: { reveal: number; interactiv
     }, 0);
   };
   const wasDrag = () => dragRef.current?.moved ?? false;
+
+  /** Travel to wherever the chart was touched, centring that slice of sky. */
+  const chartTo = (clientX: number, animate: boolean) => {
+    const el = chartRef.current;
+    if (!el || !skyW) return;
+    const r = el.getBoundingClientRect();
+    const frac = clamp((clientX - r.left) / r.width, 0, 1);
+    applyPan(frac * skyW - vpW / 2, animate);
+  };
+
+  const onChartDown = (e: React.PointerEvent) => {
+    if (e.button !== 0) return;
+    chartDragRef.current = true;
+    (e.target as Element).setPointerCapture?.(e.pointerId);
+    chartTo(e.clientX, true);
+  };
+  const onChartMove = (e: React.PointerEvent) => {
+    if (chartDragRef.current) chartTo(e.clientX, false);
+  };
+  const endChartDrag = () => {
+    chartDragRef.current = false;
+  };
+
+  /** One press of an edge arrow travels most of a screen. */
+  const stepSky = (dir: -1 | 1) => applyPan(panRef.current + dir * vpW * 0.72, true);
 
   /** Arrow keys nudge the sky when it has focus. */
   const onKeyDown = (e: React.KeyboardEvent) => {
@@ -993,46 +1065,145 @@ export function SkillsPage({ reveal, interactive }: { reveal: number; interactiv
             </div>
           </div>
 
-          {/* pan hints */}
+          {/*
+            Travel controls. Less than half the sky fits on screen at once, so
+            without these a visitor has no way of knowing that four of the six
+            constellations are simply out of frame.
+
+            Both are aria-hidden on purpose: they are a mouse convenience, and
+            the accessible route to the same places already exists in the
+            navigator rail (which pans to a figure) and the arrow keys.
+          */}
+          {interactive &&
+            ([
+              ["left", pan.left],
+              ["right", pan.right],
+            ] as const).map(([side, on]) => (
+              <button
+                key={side}
+                aria-hidden="true"
+                tabIndex={-1}
+                onClick={() => stepSky(side === "left" ? -1 : 1)}
+                className={reduced ? undefined : `pan-arrow-${side}`}
+                style={{
+                  position: "absolute",
+                  [side]: 10,
+                  // Below the proof panel, which owns the vertical middle of
+                  // this edge, and above the languages row.
+                  top: "78%",
+                  // The bob animation carries this too; it is here so the
+                  // reduced-motion arrow (which has no animation) still sits
+                  // centred on its anchor.
+                  transform: "translateY(-50%)",
+                  width: 34,
+                  height: 46,
+                  borderRadius: 9,
+                  display: "flex",
+                  alignItems: "center",
+                  justifyContent: "center",
+                  fontFamily: PIXEL,
+                  fontSize: 13,
+                  color: "#bcd2ff",
+                  border: "1px solid rgba(122,162,247,0.3)",
+                  background: "rgba(8,13,28,0.62)",
+                  backdropFilter: "blur(10px)",
+                  WebkitBackdropFilter: "blur(10px)",
+                  cursor: "pointer",
+                  opacity: chromeO * (on ? 1 : 0),
+                  pointerEvents: on ? "auto" : "none",
+                  transition: "opacity 0.25s ease",
+                  zIndex: 3,
+                }}
+              >
+                {side === "left" ? "◄" : "►"}
+              </button>
+            ))}
+
+          {/* the sky chart: the whole sky, and where in it you are */}
           {interactive && (
-            <>
+            <div
+              aria-hidden="true"
+              style={{
+                position: "absolute",
+                right: 16,
+                top: CHART_TOP,
+                width: PANEL_W,
+                padding: "8px 10px 9px",
+                borderRadius: 9,
+                border: "1px solid rgba(122,162,247,0.22)",
+                background: "rgba(8,13,28,0.72)",
+                backdropFilter: "blur(12px)",
+                WebkitBackdropFilter: "blur(12px)",
+                opacity: chromeO,
+                zIndex: 3,
+              }}
+            >
               <div
-                aria-hidden="true"
                 style={{
-                  position: "absolute",
-                  left: 10,
-                  top: "50%",
-                  transform: "translateY(-50%)",
-                  fontFamily: PIXEL,
-                  fontSize: 15,
-                  color: "#8fb6ff",
-                  opacity: chromeO * (pan.left ? 0.85 : 0.12),
-                  textShadow: "0 0 10px rgba(143,182,255,0.7)",
-                  pointerEvents: "none",
-                  transition: "opacity 0.25s ease",
+                  display: "flex",
+                  justifyContent: "space-between",
+                  alignItems: "baseline",
+                  marginBottom: 6,
                 }}
               >
-                ◄
+                <span style={{ fontFamily: PIXEL, fontSize: 7, color: "#68719c", letterSpacing: 1 }}>
+                  SKY CHART
+                </span>
+                <span className="font-mono" style={{ fontSize: 9, color: "#8fb6ff" }}>
+                  ◄ drag to explore ►
+                </span>
               </div>
               <div
-                aria-hidden="true"
+                ref={chartRef}
+                onPointerDown={onChartDown}
+                onPointerMove={onChartMove}
+                onPointerUp={endChartDrag}
+                onPointerCancel={endChartDrag}
                 style={{
-                  position: "absolute",
-                  right: 10,
-                  top: "50%",
-                  transform: "translateY(-50%)",
-                  fontFamily: PIXEL,
-                  fontSize: 15,
-                  color: "#8fb6ff",
-                  opacity: chromeO * (pan.right ? 0.85 : 0.12),
-                  textShadow: "0 0 10px rgba(143,182,255,0.7)",
-                  pointerEvents: "none",
-                  transition: "opacity 0.25s ease",
+                  position: "relative",
+                  height: CHART_H,
+                  borderRadius: 5,
+                  background: "rgba(143,182,255,0.07)",
+                  border: "1px solid rgba(122,162,247,0.18)",
+                  cursor: "pointer",
+                  touchAction: "none",
+                  overflow: "hidden",
                 }}
               >
-                ►
+                {BOXES.map((b, i) => (
+                  <span
+                    key={skillBranches[i].id}
+                    style={{
+                      position: "absolute",
+                      left: `${(b.cx / SKY_W) * 100}%`,
+                      top: "50%",
+                      width: 5,
+                      height: 5,
+                      borderRadius: "50%",
+                      background: skillBranches[i].color,
+                      boxShadow: `0 0 6px ${skillBranches[i].color}`,
+                      opacity: focus === skillBranches[i].id ? 1 : 0.72,
+                      transform: "translate(-50%, -50%)",
+                      transition: "opacity 0.25s ease",
+                    }}
+                  />
+                ))}
+                {/* where you are looking */}
+                <div
+                  style={{
+                    position: "absolute",
+                    top: 0,
+                    bottom: 0,
+                    left: skyW ? `${(panX / skyW) * 100}%` : 0,
+                    width: skyW ? `${(vpW / skyW) * 100}%` : "100%",
+                    borderRadius: 3,
+                    border: "1px solid rgba(238,242,255,0.7)",
+                    background: "rgba(238,242,255,0.1)",
+                    pointerEvents: "none",
+                  }}
+                />
               </div>
-            </>
+            </div>
           )}
 
           {/* navigator rail: the way in */}
