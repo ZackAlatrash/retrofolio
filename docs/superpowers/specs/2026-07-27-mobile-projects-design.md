@@ -195,6 +195,32 @@ home rather than flying it off-screen.
 - Unit: the layout profile (television width factor, cartridge sizing, columns).
 - Unit: two-tap selection logic under `(hover: none)`.
 
+## Changed during implementation
+
+Two things the design got wrong, both found by measuring.
+
+**The swipe rack is gated on touch, and hover-capable narrow windows wrap
+instead.** A container with `overflow-x: auto` and nothing to scroll vertically
+also absorbs vertical wheel deltas, so on a narrow desktop window a mouse scroll
+over the shelf dragged the rack sideways instead of advancing the pinned
+sequence. Touch has no such fallback: a pan is resolved to one axis. So
+`swipes = overflows && hoverless` and `wraps = overflows && !hoverless`; the
+wrapping layout reaches the same cartridges by other means. This is why
+`rackMetrics` returns both a fractional `visible` (for the peek) and an integer
+`cols` (for the rows).
+
+**The rack must be measured from the cabinet's content box, not its width.** The
+cabinet carries a 2px border, so the rack has 4px less than the cabinet is wide.
+Passing the border-box width cost a whole column: three cartridges needed 346px
+where only 342px existed, so the row wrapped at two. `CABINET_BORDER` is now a
+named constant used by both the geometry and the border itself.
+
+Also added: `?touch` forces the hoverless path. A desktop browser reports
+`(hover: hover)` at any window size, so without it the touch shelf could not be
+looked at or tested anywhere but a real device. Touch target sizes hang off a
+`data-touch` attribute on the document root, set from the same flag, for the
+same reason.
+
 ## Known limit
 
 Genuine touch axis-arbitration inside a pinned sticky sequence only proves itself

@@ -33,6 +33,7 @@ These exist because the whole site is one scroll-scrubbed sequence, and there is
 | `?cp=0..1` | Force the credits roll progress |
 | `?m=0..1` | Force the HUD nav's morph value |
 | `?motion` | Ignore `prefers-reduced-motion` |
+| `?touch` | Force the hoverless path (swipe rack, two-tap load, 44px targets) |
 
 ## Architecture
 

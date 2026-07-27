@@ -8,6 +8,7 @@ import { useReducedMotion } from "../motion/useReducedMotion";
 import { FRAME_COUNT, frameUrl, posterUrl } from "../hero/useHeroScrub";
 import { DecodeText } from "../hero/DecodeText";
 import { useSettings, pick, type Lang } from "../game/settings";
+import { useLayoutProfile, rackMetrics } from "../game/useLayoutProfile";
 import { Cartridge } from "../showcase/Cartridge";
 import {
   showcase,
@@ -51,6 +52,19 @@ const PIXEL = '"Press Start 2P", ui-monospace, monospace';
 /** Cartridge aspect (shell sources are 716x592). */
 const CART_AR = 592 / 716;
 
+/**
+ * Pull-back progress at which the last cartridge finishes settling onto the
+ * shelf. Derived from the stagger below rather than written down twice: a
+ * cartridge that looks ready and refuses to open reads as a broken site, and
+ * on touch there is no hover lift to soften it.
+ */
+/** The cabinet's frame, which sits outside its content box. */
+const CABINET_BORDER = 2;
+
+const SHELF_SETTLE_END = 0.7;
+const SHELF_STAGGER = 0.02;
+const SHELF_SETTLED_T = SHELF_SETTLE_END + (showcase.length - 1) * SHELF_STAGGER;
+
 /** Shell + label markup shared by the flight clones and the seated cart. */
 const cartMarkup = (e: ShowcaseEntry) =>
   `<img src="${shellUrl(e.shell)}" style="position:absolute;inset:0;width:100%;height:100%;" alt=""/>` +
@@ -71,6 +85,18 @@ const FOOTER = {
 const SUBTITLE = {
   en: "every cartridge is a real project I built and shipped",
   nl: "elke cartridge is een echt project dat ik heb gebouwd en opgeleverd",
+};
+const SHELF_HINT = {
+  en: "HOVER A CARTRIDGE · CLICK TO LOAD",
+  nl: "BEWEEG OVER EEN CARTRIDGE · KLIK OM TE LADEN",
+};
+const SHELF_HINT_TAP = {
+  en: "TAP TO SELECT · TAP AGAIN TO LOAD",
+  nl: "TIK OM TE KIEZEN · TIK NOGMAALS OM TE LADEN",
+};
+const SHELF_HINT_SWIPE = {
+  en: "SWIPE · TAP TO SELECT · TAP AGAIN TO LOAD",
+  nl: "VEEG · TIK OM TE KIEZEN · TIK NOGMAALS OM TE LADEN",
 };
 
 function useViewport() {
@@ -99,6 +125,7 @@ function useViewport() {
  */
 export function TitleLibrary() {
   const { lang } = useSettings();
+  const profile = useLayoutProfile();
   const prefersReduced = useReducedMotion();
   const params =
     typeof window !== "undefined"
@@ -164,6 +191,29 @@ export function TitleLibrary() {
       window.removeEventListener("resize", fit);
     };
   }, []);
+  // The cabinet's laid-out height, measured so the station can be scaled to fit
+  // the pinned viewport. offsetHeight ignores transforms, so measuring it while
+  // the station is already scaled cannot feed back on itself.
+  const cabinetRef = useRef<HTMLDivElement>(null);
+  const [cabH, setCabH] = useState(0);
+  const rackRef = useRef<HTMLDivElement>(null);
+  const [rackIdx, setRackIdx] = useState(0);
+  useEffect(() => {
+    const el = cabinetRef.current;
+    if (!el) return;
+    const measure = () => setCabH(el.offsetHeight);
+    measure();
+    // Webfonts change the plaque and caption heights after first paint.
+    const id = window.setTimeout(measure, 600);
+    const ro =
+      typeof ResizeObserver === "undefined" ? null : new ResizeObserver(measure);
+    ro?.observe(el);
+    return () => {
+      window.clearTimeout(id);
+      ro?.disconnect();
+    };
+  }, [W, H]);
+
   const stageRef = useRef<HTMLDivElement>(null);
   const flyRef = useRef<HTMLDivElement>(null);
   const glassRef = useRef<HTMLDivElement>(null);
@@ -196,6 +246,21 @@ export function TitleLibrary() {
     }
   }, [seated]);
 
+  const isOnScreen = (r: DOMRect) =>
+    r.width > 0 &&
+    r.right > 0 &&
+    r.left < window.innerWidth &&
+    r.bottom > 0 &&
+    r.top < window.innerHeight;
+
+  /** Scroll a cartridge back into the rack without moving the page. */
+  const revealInRack = (cartEl: HTMLElement) => {
+    const r = rackRef.current;
+    if (!r || r.scrollWidth <= r.clientWidth) return;
+    const target = cartEl.offsetLeft - (r.clientWidth - cartEl.offsetWidth) / 2;
+    r.scrollLeft = Math.max(0, Math.min(target, r.scrollWidth - r.clientWidth));
+  };
+
   const pulseGlow = () => {
     const g = slotGlowRef.current;
     if (!g) return;
@@ -222,14 +287,14 @@ export function TitleLibrary() {
   const boot = (id: string) => {
     if (flowRef.current.phase !== "shelf") return;
     setSelectedId(id);
-    // Only boot once the station is settled; earlier clicks just preview.
+    // Only boot once the shelf is settled; earlier clicks just preview.
     const container = containerRef.current;
     if (container && forcedSeq == null) {
       const total = container.offsetHeight - window.innerHeight;
       const top = container.getBoundingClientRect().top;
       const pr = total > 0 ? clamp01(-top / total) : 0;
       const tt = clamp01((pr - S1) / (S2 - S1));
-      if (tt < 0.9) return;
+      if (tt < SHELF_SETTLED_T) return;
       // Once the About camera has engaged the shelf is no longer the subject.
       if (pr > S3 + 0.01) return;
     }
@@ -403,7 +468,25 @@ export function TitleLibrary() {
         cart.style.transform = "";
         cart.style.top = `${hoverY}px`;
         cart.style.clipPath = "";
+        // The rack scrolls, and a project reached with NEXT may belong to a
+        // cartridge that is no longer in view. Bring its seat back before
+        // measuring, or the cartridge arcs home to somewhere off-screen.
+        revealInRack(cartEl);
         const cR = cartEl.getBoundingClientRect();
+        if (!isOnScreen(cR)) {
+          // Nothing sensible to fly to: set it down where it is.
+          tween(
+            220,
+            (e) => {
+              cart.style.opacity = String(1 - e);
+            },
+            () => {
+              cart.remove();
+              finishEject();
+            },
+          );
+          return;
+        }
         const dx = cR.left + cR.width / 2 - (slotX + targetW / 2);
         const dy = cR.top + (cR.width * CART_AR) / 2 - (hoverY + cartH / 2);
         const scaleEnd = cR.width / targetW;
@@ -718,13 +801,39 @@ export function TitleLibrary() {
 
   // ---- station geometry (fixed; it does not fly) ----
   const endTop = Math.max(40, 0.05 * H);
-  const endW = Math.min(0.56 * W, Math.max(320, (H - endTop - 14) / 1.44));
+  const endW = Math.min(
+    profile.tvWidthFactor * W,
+    Math.max(320, (H - endTop - 14) / 1.44),
+  );
   const tvW = endW;
   const tvH = tvW * TV_AR;
   const tvTop = endTop;
   const cabW = Math.min(tvW * 1.5, W * 0.96);
   const cabTop = tvTop + tvH - 8;
   const stationRise = (1 - stationIn) * 26;
+  // The cabinet's own border is outside its content box, so the rack has
+  // CABINET_BORDER * 2 fewer pixels than the cabinet is wide. Measuring from
+  // the wrong one costs a whole column.
+  const rack = rackMetrics(cabW - CABINET_BORDER * 2, showcase.length);
+  /**
+   * The rack only swipes on a touch device. A container with `overflow-x: auto`
+   * and nothing to scroll vertically also absorbs vertical wheel deltas, so on a
+   * narrow desktop window a mouse scroll over the shelf would drag the rack
+   * sideways instead of advancing the pinned sequence. Touch has no such
+   * fallback: a pan is resolved to one axis. Where the shelf overflows without
+   * touch, it wraps to rows instead, which reaches the same cartridges.
+   */
+  const swipes = rack.overflows && profile.hoverless;
+  const wraps = rack.overflows && !profile.hoverless;
+  const cartW = wraps ? rack.wrapCartW : rack.cartW;
+  /**
+   * The station is sized for width, but it lives in a pinned viewport, so on a
+   * short one (a phone in landscape above all) it would simply run off the
+   * bottom. Scaling the whole station as a unit is what lets the portrait
+   * television be sized aggressively instead of conservatively.
+   */
+  const naturalBottom = cabTop + cabH;
+  const stationScale = cabH > 0 ? Math.min(1, (H - 10) / naturalBottom) : 1;
 
   const powerPlaneOpacity = onDot * (1 - smooth(t, 0.74, 0.82));
 
@@ -814,7 +923,10 @@ export function TitleLibrary() {
           aria-hidden={stationIn < 0.05}
           style={{
             opacity: stationIn,
-            transform: `translateY(${stationRise}px)`,
+            // Scaled about the top centre so the television keeps its place
+            // under the stage label while the whole station shrinks to fit.
+            transformOrigin: "50% 0",
+            transform: `translateY(${stationRise}px) scale(${stationScale.toFixed(4)})`,
           }}
         >
           {/* TV */}
@@ -967,6 +1079,7 @@ export function TitleLibrary() {
 
           {/* cabinet */}
           <div
+            ref={cabinetRef}
             style={{
               position: "absolute",
               left: "50%",
@@ -975,7 +1088,7 @@ export function TitleLibrary() {
               transform: "translateX(-50%)",
               zIndex: 2,
               borderRadius: 10,
-              border: "2px solid #0b0c14",
+              border: `${CABINET_BORDER}px solid #0b0c14`,
               background:
                 "linear-gradient(180deg, #282a3b 0%, #1d1f2c 55%, #171925 100%)",
               boxShadow:
@@ -1100,21 +1213,47 @@ export function TitleLibrary() {
             />
             {/* open shelf: the cartridges settle with a slight stagger */}
             <div
+              ref={rackRef}
+              className="cart-rack"
+              onScroll={
+                swipes
+                  ? (ev) =>
+                      setRackIdx(
+                        Math.round(ev.currentTarget.scrollLeft / rack.pitch),
+                      )
+                  : undefined
+              }
               style={{
-                display: "grid",
-                gridTemplateColumns: `repeat(${showcase.length}, 1fr)`,
-                gap: Math.max(8, cabW * 0.016),
-                padding: `14px ${Math.max(14, cabW * 0.03)}px 12px`,
+                display: "flex",
+                flexWrap: wraps ? "wrap" : "nowrap",
+                justifyContent: wraps ? "center" : "flex-start",
+                gap: rack.gap,
+                padding: `14px ${rack.pad}px 12px`,
+                overflowX: swipes ? "auto" : "visible",
+                // Without this an edge swipe triggers the browser's own back
+                // gesture instead of moving the rack.
+                overscrollBehaviorX: swipes ? "contain" : undefined,
+                scrollSnapType: swipes ? "x mandatory" : undefined,
+                scrollPaddingLeft: rack.pad,
               }}
             >
               {showcase.map((e, i) => {
-                const settle = smooth(t, 0.5 + i * 0.02, 0.7 + i * 0.02);
+                const settle = smooth(
+                  t,
+                  0.5 + i * SHELF_STAGGER,
+                  SHELF_SETTLE_END + i * SHELF_STAGGER,
+                );
                 return (
                   <div
                     key={e.id}
                     data-cart-id={e.id}
                     style={{
-                      width: "100%",
+                      flex: `0 0 ${cartW}px`,
+                      // A flex item defaults to min-width:auto, which lets the
+                      // name tag push past the basis. That is the whole reason
+                      // cartridges used to come out at different widths.
+                      minWidth: 0,
+                      scrollSnapAlign: swipes ? "start" : undefined,
                       opacity: settle,
                       transform: `translateY(${(1 - settle) * 16}px)`,
                     }}
@@ -1122,6 +1261,7 @@ export function TitleLibrary() {
                     <Cartridge
                       entry={e}
                       selected={e.id === selectedId}
+                      hoverless={profile.hoverless}
                       onSelect={setSelectedId}
                       onOpen={boot}
                     />
@@ -1129,6 +1269,31 @@ export function TitleLibrary() {
                 );
               })}
             </div>
+            {/* Only 3-4 cartridges are in view on a phone, so the rack needs to
+                say how far along it is; the peeking cartridge alone does not. */}
+            {swipes && (
+              <div
+                aria-hidden="true"
+                style={{
+                  display: "flex",
+                  justifyContent: "center",
+                  gap: 5,
+                  paddingBottom: 8,
+                }}
+              >
+                {showcase.map((e, i) => (
+                  <span
+                    key={e.id}
+                    style={{
+                      width: 5,
+                      height: 5,
+                      borderRadius: "50%",
+                      background: i === rackIdx ? "#8a93bd" : "#3a3f5c",
+                    }}
+                  />
+                ))}
+              </div>
+            )}
             <div
               className="font-mono"
               style={{
@@ -1139,7 +1304,14 @@ export function TitleLibrary() {
                 color: "#565f89",
               }}
             >
-              HOVER A CARTRIDGE · CLICK TO LOAD
+              {pick(
+                lang,
+                !profile.hoverless
+                  ? SHELF_HINT
+                  : swipes
+                    ? SHELF_HINT_SWIPE
+                    : SHELF_HINT_TAP,
+              )}
             </div>
           </div>
         </div>
@@ -1813,6 +1985,7 @@ function ScreenChrome({
 
 /** Reduced-motion fallback: static title, then the station as a normal section. */
 function ReducedTitleLibrary({ lang }: { lang: Lang }) {
+  const { hoverless } = useLayoutProfile();
   const [selectedId, setSelectedId] = useState<string | null>(null);
   const [detailId, setDetailId] = useState<string | null>(null);
   const entry = selectedId
@@ -1929,6 +2102,7 @@ function ReducedTitleLibrary({ lang }: { lang: Lang }) {
               key={e.id}
               entry={e}
               selected={e.id === selectedId}
+              hoverless={hoverless}
               onSelect={setSelectedId}
               onOpen={(id) => {
                 setSelectedId(id);

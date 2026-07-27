@@ -11,6 +11,8 @@ const LABEL = { left: "16.2%", top: "23.7%", width: "63.9%", height: "46%" };
 interface CartridgeProps {
   entry: ShowcaseEntry;
   selected: boolean;
+  /** No hover available: the preview needs a tap of its own. */
+  hoverless?: boolean;
   onSelect: (id: string) => void;
   onOpen: (id: string) => void;
 }
@@ -19,16 +21,34 @@ interface CartridgeProps {
  * One cartridge standing on the open shelf ledge: no recessed box, just the
  * cart with a soft contact shadow and a small name tag beneath. Hover/selection
  * lifts and enlarges it.
+ *
+ * Without hover the preview beat would be lost entirely, so a touch visitor
+ * gets it back as a first tap: tap to put the project on the television, tap
+ * the same cartridge again to load it. Keyboard needs no special case, because
+ * focus already selects, so by the time Enter fires this is the selection.
  */
-export function Cartridge({ entry, selected, onSelect, onOpen }: CartridgeProps) {
+export function Cartridge({
+  entry,
+  selected,
+  hoverless,
+  onSelect,
+  onOpen,
+}: CartridgeProps) {
   const { project } = entry;
   const dot = statusColor(project);
+  const step = hoverless && !selected ? "select" : "load";
   return (
     <button
-      onMouseEnter={() => onSelect(entry.id)}
+      onMouseEnter={hoverless ? undefined : () => onSelect(entry.id)}
       onFocus={() => onSelect(entry.id)}
-      onClick={() => onOpen(entry.id)}
-      aria-label={`${project.name}: ${entry.genre}`}
+      onClick={() => (step === "select" ? onSelect(entry.id) : onOpen(entry.id))}
+      aria-label={
+        hoverless
+          ? `${project.name}: ${entry.genre}. ${
+              step === "select" ? "Select" : "Load"
+            }`
+          : `${project.name}: ${entry.genre}`
+      }
       style={{
         position: "relative",
         width: "100%",
@@ -39,6 +59,8 @@ export function Cartridge({ entry, selected, onSelect, onOpen }: CartridgeProps)
         display: "flex",
         flexDirection: "column",
         alignItems: "center",
+        // The rack sizes cartridges in pixels; nothing inside one may widen it.
+        minWidth: 0,
       }}
     >
       {/* the cart */}
@@ -106,6 +128,10 @@ export function Cartridge({ entry, selected, onSelect, onOpen }: CartridgeProps)
           fontSize: 8.5,
           letterSpacing: 0.3,
           whiteSpace: "nowrap",
+          // A long plaque truncates rather than setting the cartridge's width:
+          // that is what used to make OMNIPOTENCE wider than KUKIS.
+          maxWidth: "100%",
+          overflow: "hidden",
           background: selected ? "rgba(122,162,247,0.16)" : "rgba(0,0,0,0.28)",
           color: selected ? "var(--term-fg)" : "#9298b4",
           transition: "background 0.18s ease, color 0.18s ease",
@@ -122,7 +148,9 @@ export function Cartridge({ entry, selected, onSelect, onOpen }: CartridgeProps)
             flex: "none",
           }}
         />
-        {entry.plaque}
+        <span style={{ overflow: "hidden", textOverflow: "ellipsis" }}>
+          {entry.plaque}
+        </span>
       </span>
     </button>
   );

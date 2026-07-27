@@ -373,6 +373,32 @@ body {
     grid-template-columns: repeat(2, minmax(0, 1fr));
   }
 }
+/* Two columns on a phone leaves ~146px per stage, which is narrower than the
+   class names inside them, so identifiers broke mid-word. One column fits. */
+@media (max-width: 430px) {
+  .stage-grid {
+    grid-template-columns: minmax(0, 1fr);
+  }
+}
+
+/* A finger is not a cursor: the small controls inside the detail screen are
+   sized for a pointer, so on a touch device they get a real target. Padding
+   rather than height, so nothing reflows on a mouse. */
+:root[data-touch] .stage-switch,
+:root[data-touch] .coach-chip,
+:root[data-touch] .stage-node {
+  min-height: 44px;
+}
+
+/* The cartridge rack scrolls sideways on a phone. Its own scrollbar would sit
+   across the shelf ledge, and the peeking cartridge is the affordance. */
+.cart-rack {
+  scrollbar-width: none;
+  -ms-overflow-style: none;
+}
+.cart-rack::-webkit-scrollbar {
+  display: none;
+}
 
 /* A stage node is a button, so it has to read as one before it is hovered. */
 .stage-node {
@@ -381,11 +407,20 @@ body {
     border-color 140ms ease,
     transform 140ms ease;
 }
-.stage-node:hover,
-.coach-chip:hover {
-  background: rgba(52, 62, 108, 0.98) !important;
-  border-color: #a3aee6 !important;
-  transform: translateY(-1px);
+/* Gated on real hover, or a touch tap latches the lit state on and leaves it. */
+@media (hover: hover) and (pointer: fine) {
+  .stage-node:hover,
+  .coach-chip:hover {
+    background: rgba(52, 62, 108, 0.98) !important;
+    border-color: #a3aee6 !important;
+    transform: translateY(-1px);
+  }
+  .stage-node:hover .stage-chevron {
+    transform: translateY(2px);
+  }
+  .stage-node[aria-expanded="true"]:hover .stage-chevron {
+    transform: rotate(180deg) translateY(2px);
+  }
 }
 /* Presses in like a key, so the whole card reads as the control it is. */
 .stage-node:active,
@@ -406,12 +441,6 @@ body {
 }
 .stage-chevron {
   transition: transform 140ms ease;
-}
-.stage-node:hover .stage-chevron {
-  transform: translateY(2px);
-}
-.stage-node[aria-expanded="true"]:hover .stage-chevron {
-  transform: rotate(180deg) translateY(2px);
 }
 @media (prefers-reduced-motion: reduce) {
   .stage-node,

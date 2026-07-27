@@ -1,5 +1,6 @@
 import { useState } from "react";
 import type { PipelineStage, PipelineTrack, SystemMap as SystemMapData } from "../content/types";
+import { SUBHEAD_FLEX } from "./detailUi";
 
 const PIXEL = '"Press Start 2P", ui-monospace, monospace';
 
@@ -130,7 +131,10 @@ function Track({
     >
       <div style={{ display: "flex", alignItems: "baseline", gap: 10, flexWrap: "wrap" }}>
         <span style={{ fontFamily: PIXEL, fontSize: 11, color: accent }}>{track.label}</span>
-        <span className="font-mono" style={{ fontSize: 12.5, color: INK_2, flex: 1 }}>
+        <span
+          className="font-mono"
+          style={{ fontSize: 12.5, color: INK_2, flex: SUBHEAD_FLEX }}
+        >
           {track.purpose}
         </span>
       </div>
@@ -270,7 +274,9 @@ function StageNode({
       </span>
 
       <span style={{ fontSize: 13.5, color: INK, lineHeight: 1.25 }}>{stage.label}</span>
-      <span style={{ fontSize: 12, color: INK_2, lineHeight: 1.35, overflowWrap: "anywhere" }}>
+      {/* break-word, not anywhere: a class name only splits when it genuinely
+          cannot fit a line, rather than wherever the column happens to end. */}
+      <span style={{ fontSize: 12, color: INK_2, lineHeight: 1.35, overflowWrap: "break-word" }}>
         {impl}
       </span>
     </button>

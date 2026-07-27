@@ -136,8 +136,11 @@ export function DetailOverlay({
               style={{
                 position: "absolute",
                 inset: 0,
+                // Starts high because the genre and description wrap taller on
+                // a narrow screen and would otherwise sit on the bright part of
+                // the artwork.
                 background:
-                  "linear-gradient(180deg, transparent 40%, rgba(5,8,16,0.88) 92%)",
+                  "linear-gradient(180deg, transparent 12%, rgba(5,8,16,0.72) 46%, rgba(5,8,16,0.92) 88%)",
               }}
             />
             <div style={{ position: "absolute", left: 14, right: 14, bottom: 12 }}>
@@ -382,6 +385,10 @@ function BarButton({
         cursor: "pointer",
         background: "transparent",
         whiteSpace: "nowrap",
+        // These three sit alone in the title bar and are the only way out of
+        // the detail screen, so they get a full touch target.
+        minHeight: 44,
+        minWidth: 44,
       }}
     >
       {label}
