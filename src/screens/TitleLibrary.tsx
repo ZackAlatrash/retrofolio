@@ -1,5 +1,6 @@
 import {
   useEffect,
+  useLayoutEffect,
   useRef,
   useState,
   type CSSProperties,
@@ -198,7 +199,10 @@ export function TitleLibrary() {
   const [cabH, setCabH] = useState(0);
   const rackRef = useRef<HTMLDivElement>(null);
   const [rackIdx, setRackIdx] = useState(0);
-  useEffect(() => {
+  // Layout effect, not effect: until the cabinet has been measured the station
+  // has no scale, so an ordinary effect would paint one frame of an oversized
+  // station running off the bottom before correcting itself.
+  useLayoutEffect(() => {
     const el = cabinetRef.current;
     if (!el) return;
     const measure = () => setCabH(el.offsetHeight);
@@ -603,17 +607,43 @@ export function TitleLibrary() {
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
-  // Preload scrub frames.
+  /**
+   * Preload scrub frames coarse pass first.
+   *
+   * Requesting all 96 at once is 6.5 MB in flight before anything is scrubbable,
+   * which on a phone is the most expensive thing the site does. Every 4th frame
+   * is a quarter of that and already covers the whole scrub, so the sequence is
+   * usable almost immediately and fills in behind the visitor. `pickImage`
+   * already falls back to the nearest decoded neighbour, so a gap costs
+   * smoothness rather than a blank canvas.
+   */
   useEffect(() => {
     if (reduced) return;
     const imgs: HTMLImageElement[] = [];
-    for (let i = 0; i < FRAME_COUNT; i++) {
+    imagesRef.current = imgs;
+    const load = (i: number) => {
+      if (imgs[i]) return;
       const img = new Image();
       img.decoding = "async";
       img.src = frameUrl(i);
       imgs[i] = img;
+    };
+    const STRIDE = 4;
+    for (let i = 0; i < FRAME_COUNT; i += STRIDE) load(i);
+    // The rest once the coarse pass has had the network to itself.
+    let idle = 0;
+    const fill = () => {
+      for (let i = 0; i < FRAME_COUNT; i++) load(i);
+    };
+    if (typeof requestIdleCallback === "function") {
+      idle = requestIdleCallback(fill, { timeout: 2500 });
+    } else {
+      idle = window.setTimeout(fill, 400);
     }
-    imagesRef.current = imgs;
+    return () => {
+      if (typeof cancelIdleCallback === "function") cancelIdleCallback(idle);
+      else window.clearTimeout(idle);
+    };
   }, [reduced]);
 
   // Scroll -> progress + imperative full-frame canvas draw (the approved hero).
@@ -1448,9 +1478,12 @@ export function TitleLibrary() {
           <div
             style={{
               position: "absolute",
-              bottom: "4vh",
+              // On a phone the help button sits exactly where this line ends,
+              // so the footer moves above it rather than running underneath.
+              bottom: profile.portrait ? 92 : "4vh",
               left: 0,
               right: 0,
+              padding: "0 16px",
               textAlign: "center",
               opacity: smooth(scrubP, 0.9, 1),
             }}
