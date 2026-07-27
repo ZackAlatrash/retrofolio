@@ -89,26 +89,29 @@ export function useLayoutProfile(): LayoutProfile {
  * its own name tag, so a long plaque made a wider cartridge and the shelf could
  * not shrink below the sum of its labels.
  *
- * When they cannot all fit at a readable size the rack shows a fractional
- * count, so the next cartridge peeks past the edge and reads as "there is more
- * here" rather than as a clipped row.
+ * The shelf is one row that scrolls, never several rows that wrap. The station
+ * has a fixed height budget inside the pinned viewport, so a second row is paid
+ * for out of the television: at 1280x720 a single orphan cartridge on row two
+ * cost the set 14% of its width. One scrolling row costs the same height at
+ * seven projects as at forty, which is what keeps the television's size stable
+ * as the library grows.
  */
-export const MIN_CART_W = 84;
+
+/** The size a cartridge wants to be. Fewer, larger beats more, smaller. */
+export const TARGET_CART_W = 104;
+/** Past this they stop reading as cartridges on a shelf and start as posters. */
+export const MAX_CART_W = 120;
 
 export interface RackMetrics {
-  /** Fixed cartridge width in px for the swipe rack. */
+  /** Fixed cartridge width in px. */
   cartW: number;
   /** Cartridge width plus one gap: the scroll-snap pitch. */
   pitch: number;
   gap: number;
   pad: number;
-  /** Fractional when the shelf cannot show every cartridge at once. */
+  /** Fractional when the shelf scrolls, so the next cartridge peeks. */
   visible: number;
-  /** Whole columns, for the wrapping layout. */
-  cols: number;
-  /** Fixed cartridge width in px when the rack wraps to rows instead. */
-  wrapCartW: number;
-  /** The shelf cannot show every cartridge on one row at a readable size. */
+  /** The shelf cannot show every cartridge at a readable size. */
   overflows: boolean;
 }
 
@@ -116,21 +119,18 @@ export function rackMetrics(cabW: number, count: number): RackMetrics {
   const pad = Math.max(14, cabW * 0.03);
   const gap = Math.max(8, cabW * 0.016);
   const inner = Math.max(0, cabW - pad * 2);
-  const fits = (inner + gap) / (MIN_CART_W + gap);
-  const overflows = fits < count;
-  const visible = overflows ? Math.max(2.5, Math.floor(fits) + 0.5) : count;
+  const atTarget = Math.floor((inner + gap) / (TARGET_CART_W + gap));
+  const overflows = atTarget < count;
+
+  if (!overflows) {
+    // They all fit: spread them to fill the shelf, up to the point where a
+    // cartridge stops looking like one.
+    const cartW = Math.min(MAX_CART_W, (inner - gap * (count - 1)) / count);
+    return { cartW, pitch: cartW + gap, gap, pad, visible: count, overflows };
+  }
+
+  // The half is the peek: the only thing that says the shelf continues.
+  const visible = Math.max(2.5, atTarget + 0.5);
   const pitch = (inner + gap) / visible;
-  const cols = Math.max(1, Math.min(count, Math.floor(fits)));
-  return {
-    cartW: Math.max(1, pitch - gap),
-    pitch,
-    gap,
-    pad,
-    visible,
-    cols,
-    // Floored: at the exact quotient a row of `cols` can round up past the
-    // container by a sub-pixel and wrap one cartridge early.
-    wrapCartW: Math.max(1, Math.floor((inner - gap * (cols - 1)) / cols)),
-    overflows,
-  };
+  return { cartW: Math.max(1, pitch - gap), pitch, gap, pad, visible, overflows };
 }

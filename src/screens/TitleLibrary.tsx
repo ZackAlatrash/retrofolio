@@ -99,6 +99,10 @@ const SHELF_HINT_SWIPE = {
   en: "SWIPE · TAP TO SELECT · TAP AGAIN TO LOAD",
   nl: "VEEG · TIK OM TE KIEZEN · TIK NOGMAALS OM TE LADEN",
 };
+const SHELF_HINT_SCROLL = {
+  en: "SCROLL THE SHELF · CLICK TO LOAD",
+  nl: "BLADER DOOR DE PLANK · KLIK OM TE LADEN",
+};
 
 function useViewport() {
   const [size, setSize] = useState(() => ({
@@ -198,7 +202,7 @@ export function TitleLibrary() {
   const cabinetRef = useRef<HTMLDivElement>(null);
   const [cabH, setCabH] = useState(0);
   const rackRef = useRef<HTMLDivElement>(null);
-  const [rackIdx, setRackIdx] = useState(0);
+  const [rackScroll, setRackScroll] = useState({ left: 0, max: 0 });
   // Layout effect, not effect: until the cabinet has been measured the station
   // has no scale, so an ordinary effect would paint one frame of an oversized
   // station running off the bottom before correcting itself.
@@ -217,6 +221,107 @@ export function TitleLibrary() {
       ro?.disconnect();
     };
   }, [W, H]);
+
+  /**
+   * A horizontal scroller swallows vertical wheel deltas: without this, a mouse
+   * scroll over the shelf drags the rack sideways instead of advancing the
+   * pinned sequence. Dominant-vertical goes to the page, dominant-horizontal
+   * stays with the rack. Touch never reaches here, because a pan is already
+   * resolved to one axis before it becomes a scroll.
+   *
+   * Non-passive, or preventDefault is ignored.
+   */
+  useEffect(() => {
+    const el = rackRef.current;
+    if (!el) return;
+    const onWheel = (e: WheelEvent) => {
+      if (Math.abs(e.deltaY) <= Math.abs(e.deltaX)) return;
+      e.preventDefault();
+      window.scrollBy(0, e.deltaY);
+    };
+    el.addEventListener("wheel", onWheel, { passive: false });
+    return () => el.removeEventListener("wheel", onWheel);
+  }, []);
+
+  /**
+   * The arrows' enabled state is derived from where the shelf is, so it has to
+   * be refreshed from the element rather than trusted to scroll events alone:
+   * a programmatic scroll does not always produce one.
+   */
+  const syncRack = () => {
+    const el = rackRef.current;
+    if (!el) return;
+    setRackScroll((prev) => {
+      const next = { left: el.scrollLeft, max: el.scrollWidth - el.clientWidth };
+      return prev.left === next.left && prev.max === next.max ? prev : next;
+    });
+  };
+
+  /**
+   * Keep the scroll extent in sync with layout, not just with scrolling. Read
+   * only on scroll, `max` starts at zero and the "later cartridges" arrow is
+   * born disabled on a shelf that has plenty left in it.
+   */
+  useLayoutEffect(() => {
+    const el = rackRef.current;
+    if (!el) return;
+    const sync = syncRack;
+    sync();
+    const id = window.setTimeout(sync, 600); // after webfonts settle
+    const ro =
+      typeof ResizeObserver === "undefined" ? null : new ResizeObserver(sync);
+    ro?.observe(el);
+    return () => {
+      window.clearTimeout(id);
+      ro?.disconnect();
+    };
+    // Cartridge size is derived from the viewport, and the observer catches the
+    // rest; `cartW` itself is declared further down and cannot be a dependency.
+  }, [W, H]);
+
+  /**
+   * Move the shelf by one screen of cartridges, less a little so the eye keeps
+   * its place.
+   *
+   * Hand-animated rather than `scrollBy({ behavior: "smooth" })`: with
+   * `scroll-snap-type: mandatory` the native smooth scroll does not reliably
+   * run at all, and the rAF tween is what the rest of this file animates with,
+   * so it inherits the same finish-instantly-in-a-hidden-tab behaviour. Snap is
+   * suspended for the duration or it fights the tween frame by frame, and the
+   * landing is aligned to a real snap point so restoring it does not jerk.
+   */
+  const nudgeRack = (dir: 1 | -1) => {
+    const el = rackRef.current;
+    if (!el) return;
+    const max = el.scrollWidth - el.clientWidth;
+    const clamp = (x: number) => Math.max(0, Math.min(max, x));
+    const from = el.scrollLeft;
+    const step = Math.max(rack.pitch, el.clientWidth - rack.pitch);
+    const raw = clamp(from + dir * step);
+    // Both ends are snap points in their own right (the last cartridge aligns
+    // to its end), and rounding to the nearest pitch would stop just short of
+    // them: one pitch of travel would round back to where it started.
+    let to =
+      raw >= max - 1 ? max : raw <= 1 ? 0 : clamp(Math.round(raw / rack.pitch) * rack.pitch);
+    if (Math.abs(to - from) < 1) to = clamp(from + dir * rack.pitch);
+    if (Math.abs(to - from) < 1) return;
+    if (reduced) {
+      el.scrollLeft = to;
+      syncRack();
+      return;
+    }
+    el.style.scrollSnapType = "none";
+    tween(
+      360,
+      (e) => {
+        el.scrollLeft = from + (to - from) * e;
+      },
+      () => {
+        el.style.scrollSnapType = "";
+        syncRack();
+      },
+    );
+  };
 
   const stageRef = useRef<HTMLDivElement>(null);
   const flyRef = useRef<HTMLDivElement>(null);
@@ -846,16 +951,16 @@ export function TitleLibrary() {
   // the wrong one costs a whole column.
   const rack = rackMetrics(cabW - CABINET_BORDER * 2, showcase.length);
   /**
-   * The rack only swipes on a touch device. A container with `overflow-x: auto`
-   * and nothing to scroll vertically also absorbs vertical wheel deltas, so on a
-   * narrow desktop window a mouse scroll over the shelf would drag the rack
-   * sideways instead of advancing the pinned sequence. Touch has no such
-   * fallback: a pan is resolved to one axis. Where the shelf overflows without
-   * touch, it wraps to rows instead, which reaches the same cartridges.
+   * The shelf scrolls on every device once it overflows.
+   *
+   * A container with `overflow-x: auto` and nothing to scroll vertically also
+   * absorbs vertical wheel deltas, which would drag the rack sideways when a
+   * mouse user meant to advance the sequence. That is handled outright by the
+   * wheel listener below rather than avoided, so the shelf can stay one row
+   * everywhere and the television keeps its size as the library grows.
    */
-  const swipes = rack.overflows && profile.hoverless;
-  const wraps = rack.overflows && !profile.hoverless;
-  const cartW = wraps ? rack.wrapCartW : rack.cartW;
+  const swipes = rack.overflows;
+  const cartW = rack.cartW;
   /**
    * The station is sized for width, but it lives in a pinned viewport, so on a
    * short one (a phone in landscape above all) it would simply run off the
@@ -1241,24 +1346,28 @@ export function TitleLibrary() {
                 boxShadow: "0 3px 6px rgba(0,0,0,0.4)",
               }}
             />
-            {/* open shelf: the cartridges settle with a slight stagger */}
+            {/* open shelf: one scrolling row, whatever the library grows to */}
+            <div style={{ position: "relative" }}>
             <div
               ref={rackRef}
               className="cart-rack"
-              onScroll={
+              role="group"
+              aria-label="Project cartridges"
+              onScroll={swipes ? syncRack : undefined}
+              onKeyDown={
                 swipes
-                  ? (ev) =>
-                      setRackIdx(
-                        Math.round(ev.currentTarget.scrollLeft / rack.pitch),
-                      )
+                  ? (ev) => {
+                      if (ev.key !== "ArrowLeft" && ev.key !== "ArrowRight") return;
+                      ev.preventDefault();
+                      nudgeRack(ev.key === "ArrowRight" ? 1 : -1);
+                    }
                   : undefined
               }
               style={{
                 display: "flex",
-                flexWrap: wraps ? "wrap" : "nowrap",
-                justifyContent: wraps ? "center" : "flex-start",
                 gap: rack.gap,
                 padding: `14px ${rack.pad}px 12px`,
+                justifyContent: swipes ? "flex-start" : "center",
                 overflowX: swipes ? "auto" : "visible",
                 // Without this an edge swipe triggers the browser's own back
                 // gesture instead of moving the rack.
@@ -1283,7 +1392,15 @@ export function TitleLibrary() {
                       // name tag push past the basis. That is the whole reason
                       // cartridges used to come out at different widths.
                       minWidth: 0,
-                      scrollSnapAlign: swipes ? "start" : undefined,
+                      // The last one snaps to its own end, because the shelf's
+                      // final scroll position is not a "start" snap point for
+                      // anything: mandatory snapping would drag it back and the
+                      // last cartridge could never be fully reached.
+                      scrollSnapAlign: swipes
+                        ? i === showcase.length - 1
+                          ? "end"
+                          : "start"
+                        : undefined,
                       opacity: settle,
                       transform: `translateY(${(1 - settle) * 16}px)`,
                     }}
@@ -1299,31 +1416,36 @@ export function TitleLibrary() {
                 );
               })}
             </div>
-            {/* Only 3-4 cartridges are in view on a phone, so the rack needs to
-                say how far along it is; the peeking cartridge alone does not. */}
-            {swipes && (
-              <div
-                aria-hidden="true"
-                style={{
-                  display: "flex",
-                  justifyContent: "center",
-                  gap: 5,
-                  paddingBottom: 8,
-                }}
-              >
-                {showcase.map((e, i) => (
-                  <span
-                    key={e.id}
-                    style={{
-                      width: 5,
-                      height: 5,
-                      borderRadius: "50%",
-                      background: i === rackIdx ? "#8a93bd" : "#3a3f5c",
-                    }}
-                  />
-                ))}
-              </div>
+            {/* Only where there is a mouse. A finger and a trackpad can both
+                pan the shelf directly, and on a phone these would sit on top of
+                the cartridges they are meant to help reach. */}
+            {swipes && !profile.hoverless && (
+              <>
+                <RackArrow
+                  dir={-1}
+                  disabled={rackScroll.left <= 1}
+                  onClick={() => nudgeRack(-1)}
+                />
+                <RackArrow
+                  dir={1}
+                  disabled={rackScroll.left >= rackScroll.max - 1}
+                  onClick={() => nudgeRack(1)}
+                />
+              </>
             )}
+            </div>
+            {/* Only part of the shelf is in view, so it has to say how far
+                along it is; the peeking cartridge alone does not. */}
+            {swipes && (
+              <RackProgress
+                count={showcase.length}
+                visible={rack.visible}
+                left={rackScroll.left}
+                max={rackScroll.max}
+                pitch={rack.pitch}
+              />
+            )}
+
             <div
               className="font-mono"
               style={{
@@ -1336,11 +1458,13 @@ export function TitleLibrary() {
             >
               {pick(
                 lang,
-                !profile.hoverless
-                  ? SHELF_HINT
-                  : swipes
+                profile.hoverless
+                  ? swipes
                     ? SHELF_HINT_SWIPE
-                    : SHELF_HINT_TAP,
+                    : SHELF_HINT_TAP
+                  : swipes
+                    ? SHELF_HINT_SCROLL
+                    : SHELF_HINT,
               )}
             </div>
           </div>
@@ -2158,6 +2282,101 @@ function ReducedTitleLibrary({ lang }: { lang: Lang }) {
         )}
       </section>
     </>
+  );
+}
+
+/** A shelf edge control. Overlays the rack's own padding, so it costs no width. */
+function RackArrow({
+  dir,
+  disabled,
+  onClick,
+}: {
+  dir: 1 | -1;
+  disabled: boolean;
+  onClick: () => void;
+}) {
+  return (
+    <button
+      type="button"
+      onClick={onClick}
+      disabled={disabled}
+      className="rack-arrow"
+      aria-label={dir === 1 ? "Later cartridges" : "Earlier cartridges"}
+      style={{
+        position: "absolute",
+        [dir === 1 ? "right" : "left"]: 2,
+        top: "38%",
+        transform: "translateY(-50%)",
+        opacity: disabled ? 0.22 : 1,
+        cursor: disabled ? "default" : "pointer",
+      }}
+    >
+      {dir === 1 ? "›" : "‹"}
+    </button>
+  );
+}
+
+/**
+ * Where the shelf is.
+ *
+ * A bar rather than a dot per cartridge: with seven dots beside seven
+ * cartridges the row reads as "which one is selected" instead of "how far along
+ * am I", and it stops working at all once the library is long enough for the
+ * dots to blur together. A bar says the same thing at any length.
+ */
+function RackProgress({
+  count,
+  visible,
+  left,
+  max,
+  pitch,
+}: {
+  count: number;
+  visible: number;
+  left: number;
+  max: number;
+  pitch: number;
+}) {
+  const idx = Math.min(count - 1, Math.max(0, Math.round(left / pitch)));
+  const shown = Math.min(count, Math.round(idx + visible));
+  const frac = max > 0 ? clamp01(left / max) : 0;
+  const width = clamp01(visible / count);
+  return (
+    <div
+      aria-hidden="true"
+      style={{
+        display: "flex",
+        alignItems: "center",
+        justifyContent: "center",
+        gap: 8,
+        paddingBottom: 8,
+      }}
+    >
+      <div
+        style={{
+          position: "relative",
+          width: 96,
+          height: 3,
+          borderRadius: 2,
+          background: "#2a2e46",
+        }}
+      >
+        <div
+          style={{
+            position: "absolute",
+            top: 0,
+            bottom: 0,
+            left: `${frac * (1 - width) * 100}%`,
+            width: `${width * 100}%`,
+            borderRadius: 2,
+            background: "#8a93bd",
+          }}
+        />
+      </div>
+      <span className="font-mono" style={{ fontSize: 9, color: "#565f89" }}>
+        {shown}/{count}
+      </span>
+    </div>
   );
 }
 

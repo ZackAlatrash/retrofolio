@@ -221,6 +221,54 @@ looked at or tested anywhere but a real device. Touch target sizes hang off a
 `data-touch` attribute on the document root, set from the same flag, for the
 same reason.
 
+## Revision: one scrolling row everywhere
+
+The shelf now scrolls on every device rather than wrapping on hover-capable
+ones, because wrapping does not survive the library growing.
+
+**Why.** The station has a fixed height budget inside the pinned viewport, so a
+second row of cartridges is paid for out of the television. Measured at
+1280x720 with only seven projects, the shelf already wrapped to 6 + 1, and that
+single orphan cartridge cost the set 14% of its width: 396px against a natural
+462px. Modelled forward, wrapping reaches four rows at twenty projects on a
+720p laptop. One scrolling row costs the same height at seven projects as at
+forty, so the television's size stops depending on how much work has been
+shipped. After the change the same viewport shows one row of seven and a 444px
+television.
+
+**The wheel problem is handled, not avoided.** A non-passive `wheel` listener on
+the rack forwards dominant-vertical deltas to the page and leaves
+dominant-horizontal ones to the rack. Plus `‹ ›` arrows and Left/Right keys for
+a mouse, which cannot pan. The arrows are hidden on touch, where a finger can
+pan directly and they would sit on top of the cartridges they exist to reach.
+
+**Cartridges are sized to a target, not crammed.** `TARGET_CART_W` decides how
+many fit; a scrolling shelf has no reason to shrink cartridges to squeeze in one
+more. At 1280x720 they went from 98px to 109px.
+
+**Three implementation details that only surfaced by testing:**
+
+- Native `scrollBy({ behavior: "smooth" })` does not reliably run under
+  `scroll-snap-type: mandatory`. The arrows animate with the file's own rAF
+  `tween` instead, which also inherits its finish-instantly-in-a-hidden-tab
+  behaviour. Snap is suspended for the duration or it fights the tween.
+- The last cartridge snaps to `end`, not `start`. The shelf's final scroll
+  position is not a "start" snap point for anything, so mandatory snapping
+  dragged it back and the last cartridge could never be fully reached.
+- Rounding a scroll target to the nearest pitch stops short of both ends
+  (179 rounds to 120 at a 120 pitch), after which every further click computes
+  the same target and does nothing. Both ends are now taken as-is.
+
+**A "now selected" strip was built and removed.** The intent was to say in words
+what the shelf never said. It turned out to duplicate the CRT splash exactly:
+same name, same genre, same headline, and the television says it larger. The
+~42px went back to the television instead.
+
+**The position indicator is a bar, not dots.** Seven dots beside seven
+cartridges reads as "which one is selected" rather than "how far along am I",
+and dots stop working at all once the library is long enough for them to blur
+together.
+
 ## Known limit
 
 Genuine touch axis-arbitration inside a pinned sticky sequence only proves itself
