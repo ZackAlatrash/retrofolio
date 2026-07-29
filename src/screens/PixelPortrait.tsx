@@ -1,4 +1,5 @@
 import { useEffect, useRef, useState } from "react";
+import { useLayoutProfile } from "../game/useLayoutProfile";
 import { useReducedMotion } from "../motion/useReducedMotion";
 
 /**
@@ -19,6 +20,7 @@ export function PixelPortrait({ src, alt }: { src: string; alt: string }) {
   const reduced = useReducedMotion();
   const wrapRef = useRef<HTMLDivElement>(null);
   const canvasRef = useRef<HTMLCanvasElement>(null);
+  const { hoverless } = useLayoutProfile();
   const [hinted, setHinted] = useState(false);
 
   useEffect(() => {
@@ -228,7 +230,9 @@ export function PixelPortrait({ src, alt }: { src: string; alt: string }) {
             pointerEvents: "none",
           }}
         >
-          ◨ HOVER
+          {/* The effect runs off pointermove, which a finger produces too, so
+              only the word is wrong on touch. */}
+          {hoverless ? "◨ DRAG" : "◨ HOVER"}
         </div>
       )}
     </div>

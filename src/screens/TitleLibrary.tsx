@@ -18,6 +18,7 @@ import {
   consoleUrl,
   roomUrl,
   lapUrl,
+  LAP_ART,
   LAP_SCREEN,
 } from "../showcase/showcaseData";
 import {
@@ -61,6 +62,18 @@ const CART_AR = 592 / 716;
  */
 /** The cabinet's frame, which sits outside its content box. */
 const CABINET_BORDER = 2;
+
+/**
+ * How far the About card may be shrunk to fit the pinned viewport before
+ * scrolling it beats squeezing it. Below this the prose stops being readable,
+ * and it is the prose the whole beat exists to deliver.
+ *
+ * Set just under the tightest desktop case (a 1280x720 laptop needs 0.75), so
+ * that only the viewports which were genuinely cut off change behaviour. Every
+ * one of those is a phone or a small tablet, where the card's grid collapses to
+ * one column and its height nearly triples.
+ */
+const CARD_MIN_SCALE = 0.7;
 
 const SHELF_SETTLE_END = 0.7;
 const SHELF_STAGGER = 0.02;
@@ -177,22 +190,44 @@ export function TitleLibrary() {
   // Bumped when the handheld art loads, so the camera re-measures its screen
   // (a first measurement before load would size it at zero).
   const [assetTick, setAssetTick] = useState(0);
-  // The card is shown inside a pinned viewport, so scale it to always fit.
+  /**
+   * The card is shown inside a pinned viewport, so it is scaled down to fit.
+   *
+   * Below `CARD_MIN_SCALE` that stops working twice over: the card is cut off
+   * at the top and the bottom with no scroll container to reach the rest, and
+   * what is left is too small to read. On a 390x844 phone the card's grid
+   * collapses to one column and its natural height goes from 831px to 2300px,
+   * so fitting it would need a scale of 0.33 and 13px prose would render at
+   * 4px. Past that point the card is shown at full size and scrolls instead,
+   * the way the project detail screen already does.
+   */
   const cardWrapRef = useRef<HTMLDivElement>(null);
-  const [cardScale, setCardScale] = useState(1);
-  useEffect(() => {
+  const [cardFit, setCardFit] = useState({ scale: 1, scrolls: false });
+  useLayoutEffect(() => {
     const el = cardWrapRef.current;
     if (!el) return;
     const fit = () => {
       const avail = window.innerHeight - 96;
       const h = el.scrollHeight;
-      setCardScale(h > avail ? Math.max(0.55, avail / h) : 1);
+      const needed = h > 0 ? avail / h : 1;
+      setCardFit((prev) => {
+        const next =
+          needed >= 1
+            ? { scale: 1, scrolls: false }
+            : needed < CARD_MIN_SCALE
+              ? { scale: 1, scrolls: true }
+              : { scale: needed, scrolls: false };
+        return prev.scale === next.scale && prev.scrolls === next.scrolls ? prev : next;
+      });
     };
     fit();
     const id = window.setTimeout(fit, 600); // after webfonts settle
+    const ro = typeof ResizeObserver === "undefined" ? null : new ResizeObserver(fit);
+    ro?.observe(el);
     window.addEventListener("resize", fit);
     return () => {
       window.clearTimeout(id);
+      ro?.disconnect();
       window.removeEventListener("resize", fit);
     };
   }, []);
@@ -1649,6 +1684,20 @@ export function TitleLibrary() {
             maskImage: `linear-gradient(to bottom, transparent 0%, black ${(24 * tiltBump).toFixed(1)}%)`,
           }}
         >
+          {/* A box of the art's own aspect, sized to cover the layer. Everything
+              placed by LAP_SCREEN percentages lives inside it, so the screen,
+              its glow and the camera's zoom target all track the picture when
+              it crops rather than sliding off it. */}
+          <div
+            style={{
+              position: "absolute",
+              left: "50%",
+              top: "50%",
+              transform: "translate(-50%, -50%)",
+              width: `max(100%, calc(100vh * ${LAP_ART.width / LAP_ART.height}))`,
+              aspectRatio: `${LAP_ART.width} / ${LAP_ART.height}`,
+            }}
+          >
           <img
             src={lapUrl}
             alt=""
@@ -1760,6 +1809,7 @@ export function TitleLibrary() {
               opacity: backlight,
             }}
           />
+          </div>
         </div>
 
         {/* a breath of dark as the view whips down to the lap */}
@@ -1802,16 +1852,22 @@ export function TitleLibrary() {
             pointerEvents: cardIn > 0.6 && cardExit < 0.3 ? "auto" : "none",
             transform: `translateY(${(-9 * cardExit).toFixed(2)}vh) scale(${(1 - 0.025 * cardExit).toFixed(4)})`,
             display: "flex",
-            alignItems: "center",
+            alignItems: cardFit.scrolls ? "flex-start" : "center",
             justifyContent: "center",
             padding: "20px",
+            overflowY: cardFit.scrolls ? "auto" : "visible",
+            // Deliberately not `overscroll-behavior: contain`. Chaining is the
+            // handoff: read to the end of the card and the next push carries on
+            // into the constellation, exactly as it would without the card.
+            WebkitOverflowScrolling: "touch",
           }}
         >
           <div
             ref={cardWrapRef}
             style={{
               width: "min(1060px, 100%)",
-              transform: `scale(${cardScale})`,
+              flex: "none",
+              transform: cardFit.scrolls ? undefined : `scale(${cardFit.scale})`,
               transformOrigin: "center",
             }}
           >
@@ -1820,6 +1876,10 @@ export function TitleLibrary() {
                 display: "flex",
                 alignItems: "center",
                 justifyContent: "space-between",
+                // Two pixel-font labels on one row do not survive a phone's
+                // width: they wrap into each other rather than past each other.
+                flexWrap: "wrap",
+                gap: 8,
                 marginBottom: 14,
               }}
             >

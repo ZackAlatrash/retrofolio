@@ -54,6 +54,18 @@ export const lapUrl = `${base}game/lap.webp`;
 /** The night-sky panorama behind the skill constellations. */
 export const skyUrl = `${base}game/sky.webp`;
 
+/**
+ * The lap scene's source pixels.
+ *
+ * The screen rect below is a percentage *of the image*, so the image has to be
+ * laid out in a box of its own aspect ratio rather than stretched to whatever
+ * the layer happens to be. Stretch it and the two disagree the moment the art
+ * is cropped: on a portrait phone the visible slice is a quarter of the art's
+ * width, and a screen placed by layer-percentage lands a quarter of the size,
+ * in the middle of the real one.
+ */
+export const LAP_ART = { width: 1376, height: 768 };
+
 /** The lap handheld's blank screen, as a % of the scene image (measured). */
 export const LAP_SCREEN = {
   left: 37.94,
