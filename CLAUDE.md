@@ -84,7 +84,14 @@ The site deploys to two places with different roots, so **every asset URL must b
 
 ## Deployment
 
-**GitHub Pages** (`.github/workflows/pages.yml`) — runs typecheck + unit tests before building with `VITE_BASE`, touches `.nojekyll`, deploys. Retry a failed deploy with `workflow_dispatch`.
+**GitHub Pages** (`.github/workflows/pages.yml`) — runs typecheck + unit tests before building, touches `.nojekyll`, deploys. Retry a failed deploy with `workflow_dispatch`.
+
+Served from **zackalatrash.com**, so the workflow builds with `VITE_BASE="/"`
+and `public/CNAME` carries the domain (Vite copies `public/` into `dist/`, and
+Pages reads that file to claim the custom domain). If the domain ever goes away,
+set `VITE_BASE` back to `"/${GITHUB_REPOSITORY#*/}/"` and delete the CNAME, or
+every asset URL will 404 against a project-site path. DNS is on Cloudflare with
+the Pages records set to DNS-only, not proxied.
 
 The site is fully static: there is no server and no API. The help chatbot, its
 `/api/ask` endpoint and the retrieval/gate code were removed, so nothing here

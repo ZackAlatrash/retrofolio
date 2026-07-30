@@ -37,9 +37,10 @@ jobs:
         run: npm test
 
       - name: Build
-        # A project site is served from /<repo>/, so every asset URL has to be
-        # built against that prefix rather than the domain root.
-        run: VITE_BASE="/${GITHUB_REPOSITORY#*/}/" npm run build
+        # Served from the root of zackalatrash.com (public/CNAME), not from
+        # /<repo>/, so assets are built against the domain root. Change this back
+        # to "/${GITHUB_REPOSITORY#*/}/" if the custom domain ever goes away.
+        run: VITE_BASE="/" npm run build
 
       # Pages would otherwise hand the artifact to Jekyll, which skips paths
       # beginning with an underscore.
