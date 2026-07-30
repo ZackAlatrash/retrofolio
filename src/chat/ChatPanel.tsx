@@ -185,6 +185,7 @@ export function ChatPanel() {
             fontFamily: "inherit",
             fontSize: 14,
             padding: "8px 10px",
+            minHeight: 44,
             borderRadius: 6,
             background: "color-mix(in srgb, var(--term-fg) 6%, transparent)",
             color: "var(--term-fg)",

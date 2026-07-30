@@ -386,8 +386,14 @@ body {
    rather than height, so nothing reflows on a mouse. */
 :root[data-touch] .stage-switch,
 :root[data-touch] .coach-chip,
-:root[data-touch] .stage-node {
+:root[data-touch] .stage-node,
+:root[data-touch] .proof-chip {
   min-height: 44px;
+}
+/* An inline chip needs its text centred once it is taller than its text. */
+:root[data-touch] .proof-chip {
+  display: inline-flex;
+  align-items: center;
 }
 
 /* The cartridge rack scrolls sideways. Its own scrollbar would sit across the
@@ -545,6 +551,9 @@ body {
   flex-direction: column;
   align-items: center;
   gap: 10px;
+  /* Clear of the help button in the bottom-right corner: on a phone this
+     centred band's label ran straight underneath it. */
+  padding: 0 68px;
   pointer-events: none;
   transition: opacity 0.5s ease;
   z-index: 3;

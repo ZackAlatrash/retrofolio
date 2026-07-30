@@ -347,6 +347,8 @@ export function ContactScreen() {
                   gap: 10,
                   marginTop: 18,
                   padding: "13px 22px",
+                  minHeight: 44,
+                  justifyContent: "center",
                   borderRadius: 9,
                   textDecoration: "none",
                   fontFamily: PIXEL,
@@ -441,7 +443,7 @@ function EmailTile({ email, lang }: { email: string; lang: Lang }) {
         <span
           style={{
             fontFamily: PIXEL,
-            fontSize: 8,
+            fontSize: 9.5,
             color: "#8fb6ff",
             letterSpacing: 1,
           }}
@@ -466,7 +468,7 @@ function EmailTile({ email, lang }: { email: string; lang: Lang }) {
           border: "none",
           borderLeft: "1px solid rgba(122,162,247,0.4)",
           fontFamily: PIXEL,
-          fontSize: 7.5,
+          fontSize: 9,
           letterSpacing: 1,
           color: copied ? "var(--term-green)" : "#8fb6ff",
           transition: "background 0.2s ease, color 0.2s ease",
@@ -512,7 +514,7 @@ function Link({
       <span
         style={{
           fontFamily: PIXEL,
-          fontSize: 8,
+          fontSize: 9.5,
           color: "#8fb6ff",
           letterSpacing: 1,
         }}

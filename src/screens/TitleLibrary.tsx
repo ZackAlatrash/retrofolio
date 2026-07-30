@@ -2021,7 +2021,9 @@ function BootCard({ show }: { show: number }) {
         className="press-blink"
         style={{
           fontFamily: PIXEL,
-          fontSize: "clamp(7px, 1vw, 9px)",
+          // Floored at 9.5px: this is an instruction, and 7px on a phone is
+          // below what most people can read.
+          fontSize: "clamp(9.5px, 1vw, 11px)",
           color: "#8fb6ff",
         }}
       >
@@ -2478,6 +2480,13 @@ const pressStartStyle: CSSProperties = {
   background: "transparent",
   border: "none",
   cursor: "pointer",
-  marginTop: 28,
+  marginTop: 14,
   letterSpacing: 1,
+  // The title screen's one call to action was a 14px-tall strip of text. The
+  // padding is inside the button, so the type sits where it always did.
+  minHeight: 44,
+  padding: "0 16px",
+  display: "inline-flex",
+  alignItems: "center",
+  justifyContent: "center",
 };

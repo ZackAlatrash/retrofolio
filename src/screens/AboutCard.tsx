@@ -117,10 +117,12 @@ export function AboutCard({ visible = true, play = true }: { visible?: boolean; 
                 <span
                   style={{
                     fontFamily: PIXEL,
-                    fontSize: 8,
+                    // 8px beside an 11.5px value read as a mistake rather than
+                    // a hierarchy, and the pixel face needs the size most.
+                    fontSize: 9.5,
                     color: "#8a93bd",
-                    minWidth: 46,
-                    paddingTop: 2,
+                    minWidth: 52,
+                    paddingTop: 1,
                   }}
                 >
                   {f.k}

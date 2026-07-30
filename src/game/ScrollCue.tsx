@@ -50,6 +50,11 @@ export function ScrollCue({
         zIndex: 45,
         display: "flex",
         justifyContent: "center",
+        // The help button occupies the bottom-right corner, and this cue is a
+        // full-width centred band, so on a narrow screen its text ran under it.
+        // Insetting by the button's footprint keeps the label clear of it while
+        // leaving it centred on the space that remains.
+        padding: "0 68px",
         pointerEvents: "none",
       }}
     >

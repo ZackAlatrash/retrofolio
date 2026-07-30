@@ -1482,7 +1482,7 @@ function Evidence({ skill, color }: { skill: Skill; color: string }) {
           <a
             key={ev.name}
             href={`#project-${ev.projectId}/detail`}
-            className="font-mono"
+            className="font-mono proof-chip"
             style={{
               fontSize: 10.5,
               padding: "5px 10px",

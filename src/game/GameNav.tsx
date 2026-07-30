@@ -3,6 +3,7 @@ import { scrollToScreen } from "./screens";
 import { showcase } from "../showcase/showcaseData";
 import { useSettings } from "./settings";
 import { useReducedMotion } from "../motion/useReducedMotion";
+import { useLayoutProfile } from "./useLayoutProfile";
 
 const ITEMS = [
   { id: "projects", label: "PROJECTS" },
@@ -55,6 +56,7 @@ export function GameNav({ reveal, morph, active }: GameNavProps) {
   const r = forcedM != null ? 1 : reduced ? 1 : reveal;
 
   const { w: W, h: H } = useWindowSize();
+  const { hoverless } = useLayoutProfile();
   const { lang, setLang } = useSettings();
 
   const n = ITEMS.length;
@@ -64,8 +66,28 @@ export function GameNav({ reveal, morph, active }: GameNavProps) {
   // cluster (not a full-width bar) and rises straight up into the HUD.
   const gap = clamp((W - 560) / (n - 1), 100, 158);
   const y = lerp(H * 0.66, BAR_H / 2, t);
-  const scale = lerp(1.05, 0.9, t);
   const chromeOn = t > 0.5;
+  /**
+   * Below this the spaced-out layout cannot hold.
+   *
+   * Items sit at fixed centres `gap` apart and the gap floors at 100px, so the
+   * group is about 426px wide whatever the screen is. Clearing the player chip
+   * on the left needs `W/2 - 213 > 162`, which is only true from about 750px
+   * up, and its items only stop overlapping each other by the width of their
+   * own padding once the gap exceeds 112px, which needs about 896px. Under
+   * that, items ran off both edges and printed over each other and over the
+   * chip. Narrow gets a real row instead, sized to the space it has.
+   *
+   * Touch takes the same row at any width. Even where the spaced layout fits,
+   * its items are 34px tall and their boxes overlap by the width of their
+   * padding, so which one a tap lands on depends on paint order.
+   */
+  const compact = W < 900 || hoverless;
+  /**
+   * The bar shrinks its menu slightly as it descends. Compact stops at 1: the
+   * shrink was scaling a 44px target down to 40 and quietly undoing it.
+   */
+  const scale = lerp(1.05, compact ? 1 : 0.9, t);
 
   return (
     <div
@@ -120,6 +142,8 @@ export function GameNav({ reveal, morph, active }: GameNavProps) {
             background: "transparent",
             border: "none",
             cursor: "pointer",
+            minHeight: 44,
+            minWidth: 44,
           }}
         >
           <span
@@ -134,9 +158,13 @@ export function GameNav({ reveal, morph, active }: GameNavProps) {
           >
             P1
           </span>
-          <span style={{ fontSize: 14, color: "var(--term-fg)", letterSpacing: 0.5 }}>
-            ZACK ALATRASH
-          </span>
+          {/* The name is the first thing to go: it is 109px that the four nav
+              labels need more, and the chip alone still says whose HUD this is. */}
+          {!compact && (
+            <span style={{ fontSize: 14, color: "var(--term-fg)", letterSpacing: 0.5 }}>
+              ZACK ALATRASH
+            </span>
+          )}
         </button>
 
         <div
@@ -150,12 +178,21 @@ export function GameNav({ reveal, morph, active }: GameNavProps) {
             gap: 8,
           }}
         >
-          <span
-            title={`${showcase.length} projects shipped`}
-            style={{ fontSize: 13, color: "var(--term-accent)", marginRight: 4, letterSpacing: 0.5 }}
-          >
-            ◆ {showcase.length}
-          </span>
+          {/* Decoration, and the project count is already on the library
+              screen, so it yields to the nav on a narrow bar. */}
+          {!compact && (
+            <span
+              title={`${showcase.length} projects shipped`}
+              style={{
+                fontSize: 13,
+                color: "var(--term-accent)",
+                marginRight: 4,
+                letterSpacing: 0.5,
+              }}
+            >
+              ◆ {showcase.length}
+            </span>
+          )}
           <Key
             label={lang.toUpperCase()}
             title="Language"
@@ -165,47 +202,128 @@ export function GameNav({ reveal, morph, active }: GameNavProps) {
       </div>
 
       {/* nav items: centered group, descends into the bar */}
-      {ITEMS.map((item, i) => {
-        const x = cx + (i - mid) * gap;
-        const isActive = active === item.id;
-        const highlight = chromeOn && isActive;
-        return (
-          <button
+      {compact ? (
+        <div
+          style={{
+            position: "absolute",
+            left: 0,
+            right: 0,
+            top: y,
+            transform: `translateY(-50%) scale(${scale})`,
+            display: "flex",
+            justifyContent: "center",
+            alignItems: "center",
+            // Sized against the space there actually is rather than a fixed
+            // centre-to-centre gap, so four labels fit from 320px up.
+            gap: "clamp(1px, 1.2vw, 10px)",
+            // The chip (44 + 18 left) and the language key (44 + 16 right)
+            // hold their places while this row shrinks, so the row is inset
+            // past both rather than centred over them.
+            padding: "0 70px",
+            pointerEvents: "none",
+          }}
+        >
+          {ITEMS.map((item) => (
+            <NavItem
+              key={item.id}
+              item={item}
+              highlight={chromeOn && active === item.id}
+              isActive={active === item.id}
+              opacity={r}
+              compact
+            />
+          ))}
+        </div>
+      ) : (
+        ITEMS.map((item, i) => (
+          <NavItem
             key={item.id}
-            onClick={() => scrollToScreen(item.id)}
-            aria-current={isActive ? "true" : undefined}
+            item={item}
+            index={i}
+            highlight={chromeOn && active === item.id}
+            isActive={active === item.id}
+            opacity={r}
             style={{
               position: "absolute",
-              left: x,
+              left: cx + (i - mid) * gap,
               top: y,
               transform: `translate(-50%, -50%) scale(${scale})`,
               transformOrigin: "center",
-              fontFamily: "var(--font-mono)",
-              fontSize: 16,
-              letterSpacing: 1,
-              whiteSpace: "nowrap",
-              cursor: "pointer",
-              pointerEvents: "auto",
-              border: highlight ? "1px solid var(--term-accent)" : "1px solid transparent",
-              borderRadius: 7,
-              padding: "6px 12px",
-              opacity: r,
-              background: highlight ? "var(--term-accent)" : "transparent",
-              color: highlight ? "var(--term-bg)" : "var(--term-fg)",
-              // the highlight eases; position/scale stay scroll-exact
-              transition:
-                "background 0.18s ease, color 0.18s ease, border-color 0.18s ease",
             }}
-          >
-            <span style={{ ...pixel, fontSize: "0.6em", color: highlight ? "var(--term-bg)" : "var(--term-green)", marginRight: 8, opacity: 0.85 }}>
-              {String(i + 1).padStart(2, "0")}
-            </span>
-            {item.label}
-          </button>
-        );
-      })}
+          />
+        ))
+      )}
 
     </div>
+  );
+}
+
+/**
+ * One nav entry, laid out either at a fixed centre (wide) or as a flex child
+ * (narrow). The numeral is dropped when compact: it costs about 24px an item,
+ * which is the difference between four labels fitting and not.
+ */
+function NavItem({
+  item,
+  index,
+  highlight,
+  isActive,
+  opacity,
+  compact,
+  style,
+}: {
+  item: { id: string; label: string };
+  index?: number;
+  highlight: boolean;
+  isActive: boolean;
+  opacity: number;
+  compact?: boolean;
+  style?: CSSProperties;
+}) {
+  return (
+    <button
+      onClick={() => scrollToScreen(item.id)}
+      aria-current={isActive ? "true" : undefined}
+      style={{
+        ...style,
+        fontFamily: "var(--font-mono)",
+        fontSize: compact ? "clamp(10px, 3.1vw, 15px)" : 16,
+        letterSpacing: compact ? 0.4 : 1,
+        whiteSpace: "nowrap",
+        cursor: "pointer",
+        pointerEvents: "auto",
+        border: highlight ? "1px solid var(--term-accent)" : "1px solid transparent",
+        borderRadius: 7,
+        padding: compact ? "0 clamp(2px, 1.4vw, 12px)" : "6px 12px",
+        // A finger needs the whole bar height, not the text's own box. Width
+        // too: ABOUT and SKILLS are short enough to fall under it at 320px.
+        minHeight: compact ? 44 : undefined,
+        display: compact ? "flex" : undefined,
+        alignItems: compact ? "center" : undefined,
+        minWidth: compact ? 44 : 0,
+        opacity,
+        background: highlight ? "var(--term-accent)" : "transparent",
+        color: highlight ? "var(--term-bg)" : "var(--term-fg)",
+        // the highlight eases; position/scale stay scroll-exact
+        transition:
+          "background 0.18s ease, color 0.18s ease, border-color 0.18s ease",
+      }}
+    >
+      {!compact && index != null && (
+        <span
+          style={{
+            ...pixel,
+            fontSize: "0.6em",
+            color: highlight ? "var(--term-bg)" : "var(--term-green)",
+            marginRight: 8,
+            opacity: 0.85,
+          }}
+        >
+          {String(index + 1).padStart(2, "0")}
+        </span>
+      )}
+      {item.label}
+    </button>
   );
 }
 
@@ -233,8 +351,9 @@ function Key({
       aria-label={title}
       aria-pressed={on}
       style={{
-        height: 30,
-        minWidth: 30,
+        // The key face stays 30px; the button around it is a finger's worth.
+        height: 44,
+        minWidth: 44,
         padding: "0 9px",
         borderRadius: 6,
         fontFamily: big ? "var(--font-mono)" : '"Press Start 2P", ui-monospace, monospace',
