@@ -321,32 +321,6 @@ test.describe("no invisible control intercepts a tap", () => {
   }
 });
 
-test.describe("the scroll cue keeps clear of the help button", () => {
-  test.use({ viewport: { width: 390, height: 844 } });
-
-  test("cue text and the help button do not overlap", async ({ page }) => {
-    await page.goto("/");
-    await page.waitForTimeout(1400);
-    const r = await page.evaluate(() => {
-      const cue = document.querySelector(".cue-txt");
-      const fab = document.querySelector('[aria-label*="Ask about"]');
-      if (!cue || !fab) return null;
-      const a = cue.getBoundingClientRect();
-      const b = fab.getBoundingClientRect();
-      return {
-        overlap: !(
-          a.right < b.left ||
-          a.left > b.right ||
-          a.bottom < b.top ||
-          a.top > b.bottom
-        ),
-      };
-    });
-    expect(r).not.toBeNull();
-    expect(r!.overlap).toBe(false);
-  });
-});
-
 test("no interactive control anywhere is under 44px on a phone", async ({ browser }) => {
   const ctx = await browser.newContext({
     viewport: { width: 390, height: 844 },

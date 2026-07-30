@@ -36,29 +36,3 @@ test("command palette opens and navigates", async ({ page }) => {
   await page.getByRole("button", { name: "Open the command palette" }).click();
   await expect(page.getByText(/command palette/)).toBeVisible();
 });
-
-test("chatbot answers a grounded question with a citation", async ({ page }) => {
-  await page.goto("/");
-  await page.evaluate(() =>
-    window.dispatchEvent(
-      new CustomEvent("zk:ask", {
-        detail: { question: "Does he have production AWS experience?" },
-      }),
-    ),
-  );
-  await expect(page.getByText(/AWS/).first()).toBeVisible({ timeout: 10_000 });
-});
-
-test("chatbot refuses an off-topic question", async ({ page }) => {
-  await page.goto("/");
-  await page.evaluate(() =>
-    window.dispatchEvent(
-      new CustomEvent("zk:ask", {
-        detail: { question: "What is the weather in Paris today?" },
-      }),
-    ),
-  );
-  await expect(page.getByText(/knowledge base/i).first()).toBeVisible({
-    timeout: 10_000,
-  });
-});

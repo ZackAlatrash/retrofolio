@@ -439,10 +439,6 @@ export const projects: Project[] = [
           answered: true,
         },
       ],
-      liveHere:
-        "This same idea is running on the page you are reading. The help bot in the corner refuses off-topic questions the same way, before spending anything, and it will show you its citations when it does answer. Ask it something unrelated and watch it decline.",
-      liveCaveat:
-        "The thresholds differ. Lex-AI compares dense embeddings across policy documents; this site compares term overlap across a resume, so the numbers are tuned separately against their own benchmarks.",
       handBuilt: [
         {
           label: "The vector store",

@@ -46,13 +46,9 @@ export function DetailOverlay({
       if (e.key === "ArrowLeft") onPrev();
       if (e.key === "ArrowRight") onNext();
     };
-    // The help chat sits below this overlay, so anything in here that summons
-    // it has to get out of the way first or the chat opens behind the screen.
     window.addEventListener("keydown", onKey);
-    window.addEventListener("zk:ask", onEject);
     return () => {
       window.removeEventListener("keydown", onKey);
-      window.removeEventListener("zk:ask", onEject);
     };
   }, [onEject, onPrev, onNext]);
 

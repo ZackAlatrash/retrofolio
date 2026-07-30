@@ -18,5 +18,5 @@
     "noFallthroughCasesInSwitch": true,
     "types": ["node", "vitest/globals", "@testing-library/jest-dom"]
   },
-  "include": ["src", "api", "scripts", "tests"]
+  "include": ["src", "scripts", "tests"]
 }

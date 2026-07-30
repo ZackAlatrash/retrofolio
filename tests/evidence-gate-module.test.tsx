@@ -1,9 +1,7 @@
-import { describe, it, expect, vi } from "vitest";
+import { describe, it, expect } from "vitest";
 import { act, render, screen } from "@testing-library/react";
-import userEvent from "@testing-library/user-event";
 import { EvidenceGate } from "../src/showcase/EvidenceGate";
 import { getProject } from "../src/content/projects";
-import { DEFAULT_THRESHOLD } from "../api/_lib/gate";
 
 const gate = getProject("lex-ai")!.evidenceGate!;
 
@@ -50,17 +48,6 @@ describe("evidence gate module", () => {
     expect(screen.getByText(onTopic.meaning)).toBeInTheDocument();
   });
 
-  it("summons this site's own chat rather than describing it", async () => {
-    const user = userEvent.setup();
-    const onAsk = vi.fn();
-    window.addEventListener("zk:ask", onAsk);
-    renderGate();
-
-    await user.click(screen.getByRole("button", { name: /Try it on this site/ }));
-    expect(onAsk).toHaveBeenCalledOnce();
-    window.removeEventListener("zk:ask", onAsk);
-  });
-
   it("lists what was built by hand", () => {
     renderGate();
     for (const item of gate.handBuilt) {
@@ -97,21 +84,12 @@ describe("lex-ai gate content", () => {
     });
   });
 
-  it("does not claim this site uses the same numbers", () => {
-    // The site's gate is lexical over a resume; Lex-AI's is dense over policy
-    // documents. Saying "same idea" is true, "same threshold" would not be.
-    expect(gate.liveCaveat).toMatch(/differ|separately/i);
-    expect(gate.threshold).not.toBe(DEFAULT_THRESHOLD);
-  });
-
   it("carries no em dashes", () => {
     const copy = [
       gate.claim,
       gate.below,
       gate.above,
       gate.calibration,
-      gate.liveHere,
-      gate.liveCaveat,
       ...gate.bands.flatMap((b) => [b.label, b.meaning]),
       ...gate.handBuilt.flatMap((h) => [h.label, h.detail]),
     ];

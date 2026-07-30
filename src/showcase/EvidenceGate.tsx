@@ -141,42 +141,6 @@ export function EvidenceGate({ gate, accent }: EvidenceGateProps) {
         </p>
       </Panel>
 
-      <Panel>
-        <PanelHead accent={accent} title="THE SAME IDEA, RUNNING HERE">
-          not a screenshot
-        </PanelHead>
-        <p
-          className="font-mono"
-          style={{ fontSize: 12.5, color: INK_2, lineHeight: 1.7, margin: "10px 0 0" }}
-        >
-          {gate.liveHere}
-        </p>
-        <button
-          onClick={() => window.dispatchEvent(new Event("zk:ask"))}
-          className="font-mono coach-chip"
-          style={{
-            marginTop: 11,
-            fontSize: 12.5,
-            padding: "8px 13px",
-            borderRadius: 7,
-            cursor: "pointer",
-            color: INK,
-            background: `${accent}26`,
-            borderStyle: "solid",
-            borderWidth: 1,
-            borderBottomWidth: 2,
-            borderColor: accent,
-          }}
-        >
-          Try it on this site ▸
-        </button>
-        <p
-          className="font-mono"
-          style={{ fontSize: 11.5, color: INK_3, lineHeight: 1.65, margin: "10px 0 0" }}
-        >
-          {gate.liveCaveat}
-        </p>
-      </Panel>
 
       <Panel>
         <PanelHead accent={accent} title="BUILT BY HAND">

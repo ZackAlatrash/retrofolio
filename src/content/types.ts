@@ -179,8 +179,6 @@ export interface EvidenceGateModule {
   /** Why the number is defensible rather than chosen by feel. */
   calibration: string;
   /** The same design running on this site, and how it differs. */
-  liveHere: string;
-  liveCaveat: string;
   handBuilt: HandBuilt[];
 }
 

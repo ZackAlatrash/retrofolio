@@ -551,9 +551,6 @@ body {
   flex-direction: column;
   align-items: center;
   gap: 10px;
-  /* Clear of the help button in the bottom-right corner: on a phone this
-     centred band's label ran straight underneath it. */
-  padding: 0 68px;
   pointer-events: none;
   transition: opacity 0.5s ease;
   z-index: 3;

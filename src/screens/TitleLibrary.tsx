@@ -1637,9 +1637,7 @@ export function TitleLibrary() {
           <div
             style={{
               position: "absolute",
-              // On a phone the help button sits exactly where this line ends,
-              // so the footer moves above it rather than running underneath.
-              bottom: profile.portrait ? 92 : "4vh",
+              bottom: "4vh",
               left: 0,
               right: 0,
               padding: "0 16px",

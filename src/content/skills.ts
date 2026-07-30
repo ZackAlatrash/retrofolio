@@ -69,7 +69,7 @@ export const skillBranches: SkillBranch[] = [
         id: "gating",
         name: "Evidence gating",
         blurb: "Refuse before fabricating: tuned confidence thresholds.",
-        evidence: [P.omni, P.lex, P.site],
+        evidence: [P.omni, P.lex],
       },
       {
         id: "tooling",

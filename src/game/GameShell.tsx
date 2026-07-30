@@ -1,7 +1,6 @@
 import { TitleLibrary } from "../screens/TitleLibrary";
 import { AboutScreen } from "../screens/AboutScreen";
 import { GameNav } from "./GameNav";
-import { HelpWidget } from "./HelpWidget";
 import { CrtOverlay } from "./CrtOverlay";
 import { useGameRoute } from "./useGameRoute";
 import { useReducedMotion } from "../motion/useReducedMotion";
@@ -69,7 +68,6 @@ export function GameShell() {
       <GameNav reveal={reveal} morph={morph} active={active} />
       {/* the title screen has its own cue, so this takes over after it */}
       <ScrollCue show={reveal > 0.9} settled={settled} atEnd={atEnd} active={active} />
-      <HelpWidget />
       <CrtOverlay />
     </>
   );

@@ -16,7 +16,7 @@ npm run test:e2e       # Playwright (needs `npx playwright install` once)
 Run a single unit test file or a single case:
 
 ```bash
-npx vitest run tests/gate.test.ts
+npx vitest run tests/system-map.test.tsx
 npx vitest run -t "refuses off-topic"
 ```
 
@@ -49,7 +49,7 @@ An IntersectionObserver cannot replace this: inside the pinned sequence `#about`
 
 The repo contains an earlier CLI/scroll-narrative build that is **no longer rendered**. Nothing in `App.tsx` reaches it.
 
-- **Live:** `src/game/`, `src/screens/`, `src/showcase/`, `src/hero/`, `src/motion/`, `src/theme/`, `src/content/`, `src/chat/`
+- **Live:** `src/game/`, `src/screens/`, `src/showcase/`, `src/hero/`, `src/motion/`, `src/theme/`, `src/content/`
 - **Legacy, reachable only from tests:** `src/sections/`, `src/terminal/`, `src/components/`
 
 `tests/sections.test.tsx`, `tests/command-bus.test.ts` and `tests/palette.test.tsx` still cover the legacy trees. Some docs (notably `docs/COMMANDS.md`) also describe that older model. `docs/PAGE-LAYOUT.md` is the current source of truth for structure. Before editing anything under the legacy trees, check whether the change belongs in the live equivalent instead.
@@ -57,26 +57,13 @@ The repo contains an earlier CLI/scroll-narrative build that is **no longer rend
 ### Content is résumé-derived, one direction only
 
 ```
-src/content/profile.ts + projects.ts  →  kb.ts (buildKb)  →  retrieval index  →  chatbot answers
-                                      →  showcaseData.ts  →  cartridges
+src/content/profile.ts + projects.ts  →  showcaseData.ts  →  cartridges
                                       →  skills.ts        →  constellations
 ```
 
-`kb.ts` derives every retrieval chunk from the curated content model, so numbers the bot cites are numbers that already exist in the résumé-derived content. Never write prose directly into `kb.ts`, and never add a claim, metric, or link to a screen that isn't in `profile.ts`/`projects.ts`. Chunk ids (`omnipotence:architecture`) are stable citation anchors; renaming one breaks citations.
+Never add a claim, metric, or link to a screen that isn't in `profile.ts`/`projects.ts`.
 
 `showcaseData.ts` throws at import time if a cartridge references an unknown project id.
-
-### The chatbot degrades in three steps
-
-`POST /api/ask` ([api/ask.ts](api/ask.ts)): rate-limit → treat user text as data, never instructions → retrieve → evidence gate → stream.
-
-1. **Below the gate** it refuses *without* calling the LLM.
-2. **Above the gate with no `ANTHROPIC_API_KEY` or past the spend cap**, it returns a retrieval-only cited answer.
-3. **Otherwise** it streams a grounded answer over SSE (`meta` / `token` / `done` events).
-
-[src/chat/AskClient.ts](src/chat/AskClient.ts) mirrors this client-side: when the endpoint 404s (vite dev has no serverless runtime) or the host refuses it, it runs `retrieve` + `evidenceGate` in the browser so the grounded-answer/refusal demo still works with zero cost. That is why `api/_lib/retrieve.ts` and `gate.ts` are pure and dependency-free — they run in both places, and the client imports them directly from `api/`.
-
-Gate thresholds in `api/_lib/gate.ts` are calibrated against the on-topic/off-topic benchmark in `tests/gate.test.ts`. Retune them there, not by intuition. The stopword list in `retrieve.ts` is part of the gate's correctness: incidental words like "today" leaking through let off-topic questions clear the threshold.
 
 ### Motion
 
@@ -97,9 +84,10 @@ The site deploys to two places with different roots, so **every asset URL must b
 
 ## Deployment
 
-Two targets from the same tree:
+**GitHub Pages** (`.github/workflows/pages.yml`) — runs typecheck + unit tests before building with `VITE_BASE`, touches `.nojekyll`, deploys. Retry a failed deploy with `workflow_dispatch`.
 
-- **GitHub Pages** (`.github/workflows/pages.yml`) — runs typecheck + unit tests before building with `VITE_BASE=/<repo>/`, touches `.nojekyll`, deploys. Static: `/api/ask` does not exist there, so the client falls back to local retrieval. Retry a failed deploy with `workflow_dispatch`.
-- **Vercel** (`vercel.json`) — `api/ask.ts` runs as a serverless function. Env: `ANTHROPIC_API_KEY` (server-side only), `ASK_MONTHLY_CALL_CAP` (default 5000).
+The site is fully static: there is no server and no API. The help chatbot, its
+`/api/ask` endpoint and the retrieval/gate code were removed, so nothing here
+needs a key or a serverless runtime.
 
 `.github/workflows/ci.yml` runs typecheck, unit tests, and build on every push and PR. The Playwright suite is **not** in CI.

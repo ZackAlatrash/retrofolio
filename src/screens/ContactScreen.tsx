@@ -95,8 +95,8 @@ const ROLES: {
   {
     label: { en: "BUILT WITH", nl: "GEBOUWD MET" },
     value: {
-      en: "React 18 · TypeScript · Vite · a grounded RAG help bot",
-      nl: "React 18 · TypeScript · Vite · een gefundeerde RAG-helpbot",
+      en: "React 18 · TypeScript · Vite · one scroll-scrubbed sequence",
+      nl: "React 18 · TypeScript · Vite · één scroll-gestuurde sequentie",
     },
   },
 ];
