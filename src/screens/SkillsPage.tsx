@@ -7,6 +7,7 @@ import {
   type SkillBranch,
 } from "../content/skills";
 import { useReducedMotion } from "../motion/useReducedMotion";
+import { useLayoutProfile } from "../game/useLayoutProfile";
 import { skyUrl } from "../showcase/showcaseData";
 
 /**
@@ -300,7 +301,20 @@ export function SkillsPage({ reveal, interactive }: { reveal: number; interactiv
   const reduced = useReducedMotion();
   const [sel, setSel] = useState<StarPos | null>(null);
   const [focusId, setFocusId] = useState<string | null>(null);
-  const [view, setView] = useState<"sky" | "list">("sky");
+  const [chosenView, setView] = useState<"sky" | "list">("sky");
+  const { portrait } = useLayoutProfile();
+  /**
+   * A phone gets the list and nothing else.
+   *
+   * The sky is scaled to the frame height, so on a tall narrow viewport it
+   * renders about six screens wide: legible only because it is enormous, and
+   * enormous means hunting across it to read a skill. Shrinking it to two
+   * screens of travel puts the labels at roughly 4px. There is no scale that is
+   * both readable and traversable at this width, so the sky stays as the thing
+   * the constellation reveal shows, and the list carries the content.
+   */
+  const listOnly = portrait;
+  const view = listOnly ? "list" : chosenView;
   const active = interactive ? sel : null;
   const focus = interactive ? focusId : null;
 
@@ -709,35 +723,30 @@ export function SkillsPage({ reveal, interactive }: { reveal: number; interactiv
         }}
       />
 
-      {/* what screen this is: the same stage badge the library screen wears */}
-      <div
-        style={{
-          position: "absolute",
-          top: 66,
-          left: 0,
-          right: 0,
-          textAlign: "center",
-          zIndex: 4,
-          opacity: chromeO,
-          pointerEvents: "none",
-        }}
-      >
+      {/* what screen this is: the same stage badge the library screen wears.
+          On a phone it scrolls with the list instead of floating over it: the
+          subtitle wraps to three lines at that width, which both collides with
+          the list and spends height a phone does not have. */}
+      {!listOnly && (
         <div
-          className="font-mono"
-          style={{ fontSize: 10.5, letterSpacing: 2, color: "var(--term-green)" }}
+          style={{
+            position: "absolute",
+            top: 66,
+            left: 0,
+            right: 0,
+            textAlign: "center",
+            zIndex: 4,
+            opacity: chromeO,
+            pointerEvents: "none",
+          }}
         >
-          {"// STAGE 03 · SKILL CONSTELLATIONS"}
+          <StageBadge />
         </div>
-        <div
-          className="font-mono"
-          style={{ fontSize: 10, letterSpacing: 0.6, color: "#9ba4ca", marginTop: 4 }}
-        >
-          every star is a skill · the brighter it burns, the more I have shipped with it
-        </div>
-      </div>
+      )}
 
-      {/* view switch: outside both views, so there is always a way back */}
-      {interactive && (
+      {/* view switch: outside both views, so there is always a way back.
+          Nothing to switch to on a phone, where the sky is not offered. */}
+      {interactive && !listOnly && (
         <div
           style={{
             position: "absolute",
@@ -781,11 +790,20 @@ export function SkillsPage({ reveal, interactive }: { reveal: number; interactiv
             position: "absolute",
             inset: 0,
             overflowY: "auto",
-            padding: "78px 0 74px",
+            // With the badge and the languages in the flow there is nothing
+            // floating to leave room for. The old bottom inset was sized for a
+            // 74px languages bar, which is 145px tall on a phone.
+            padding: listOnly ? "16px 0 28px" : "78px 0 74px",
             zIndex: 2,
           }}
         >
+          {listOnly && (
+            <div style={{ textAlign: "center", padding: "0 18px 14px" }}>
+              <StageBadge />
+            </div>
+          )}
           <SkillList />
+          {listOnly && <LanguagesRow flow />}
         </div>
       ) : (
         <div style={{ position: "absolute", inset: 0, zIndex: 2 }}>
@@ -1403,46 +1421,10 @@ export function SkillsPage({ reveal, interactive }: { reveal: number; interactiv
         </div>
       )}
 
-      {/* languages loadout */}
-      <div
-        style={{
-          position: "absolute",
-          left: 0,
-          right: 0,
-          bottom: 0,
-          zIndex: 3,
-          background:
-            "linear-gradient(to top, rgba(5,8,26,0.9), rgba(5,8,26,0.55) 60%, transparent)",
-          display: "flex",
-          alignItems: "center",
-          justifyContent: "center",
-          flexWrap: "wrap",
-          gap: 8,
-          padding: "26px 20px 20px",
-          opacity: chromeO,
-          pointerEvents: "none",
-        }}
-      >
-        <span style={{ fontFamily: PIXEL, fontSize: 7.5, color: "#8a93bd", marginRight: 6 }}>
-          LANGUAGES
-        </span>
-        {languages.map((l) => (
-          <span
-            key={l}
-            className="font-mono"
-            style={{
-              fontSize: 10.5,
-              padding: "5px 11px",
-              borderRadius: 6,
-              color: "#c7cde8",
-              background: "rgba(16,24,46,0.7)",
-              border: "1px solid rgba(122,162,247,0.2)",
-            }}
-          >
-            {l}
-          </span>
-        ))}
-      </div>
+      {/* languages loadout. It is content, not chrome, so on a phone it goes in
+          the list's flow: as a fixed bottom bar it grew from 74px to 145px and
+          printed straight over the skills it was meant to sit beneath. */}
+      {!listOnly && <LanguagesRow opacity={chromeO} />}
 
       {/* LCD dressing */}
       <div
@@ -1534,13 +1516,79 @@ function Evidence({ skill, color }: { skill: Skill; color: string }) {
 }
 
 /** The plain grouped list: same data, fast to scan, what phones get. */
+/** The stage badge, so it can float over the sky or sit in the list's flow. */
+function StageBadge() {
+  return (
+    <>
+      <div
+        className="font-mono"
+        style={{ fontSize: 10.5, letterSpacing: 2, color: "var(--term-green)" }}
+      >
+        {"// STAGE 03 · SKILL CONSTELLATIONS"}
+      </div>
+      <div
+        className="font-mono"
+        style={{ fontSize: 10, letterSpacing: 0.6, color: "#9ba4ca", marginTop: 4 }}
+      >
+        every star is a skill · the brighter it burns, the more I have shipped with it
+      </div>
+    </>
+  );
+}
+
+/** Same two ways round: a bar across the bottom of the sky, or the end of the list. */
+function LanguagesRow({ opacity, flow }: { opacity?: number; flow?: boolean }) {
+  return (
+    <div
+      style={{
+        ...(flow
+          ? { margin: "16px auto 0", maxWidth: 1080 }
+          : {
+              position: "absolute" as const,
+              left: 0,
+              right: 0,
+              bottom: 0,
+              zIndex: 3,
+              background:
+                "linear-gradient(to top, rgba(5,8,26,0.9), rgba(5,8,26,0.55) 60%, transparent)",
+              opacity,
+              pointerEvents: "none" as const,
+            }),
+        display: "flex",
+        alignItems: "center",
+        justifyContent: "center",
+        flexWrap: "wrap",
+        gap: 8,
+        padding: flow ? "0 20px" : "26px 20px 20px",
+      }}
+    >
+      <span style={{ fontFamily: PIXEL, fontSize: 7.5, color: "#8a93bd", marginRight: 6 }}>
+        LANGUAGES
+      </span>
+      {languages.map((l) => (
+        <span
+          key={l}
+          className="font-mono"
+          style={{
+            fontSize: 10.5,
+            padding: "5px 11px",
+            borderRadius: 6,
+            color: "#c7cde8",
+            background: "rgba(16,24,46,0.7)",
+            border: "1px solid rgba(122,162,247,0.2)",
+          }}
+        >
+          {l}
+        </span>
+      ))}
+    </div>
+  );
+}
+
 function SkillList() {
   return (
     <div
       style={{
-        flex: 1,
-        minHeight: 0,
-        overflowY: "auto",
         padding: "18px 20px 8px",
         position: "relative",
         zIndex: 2,
@@ -1551,7 +1599,8 @@ function SkillList() {
           maxWidth: 1080,
           margin: "0 auto",
           display: "grid",
-          gridTemplateColumns: "repeat(auto-fit, minmax(316px, 1fr))",
+          // min() or the 316px floor overflows a 320px phone by 36px.
+          gridTemplateColumns: "repeat(auto-fit, minmax(min(316px, 100%), 1fr))",
           gap: 14,
         }}
       >
