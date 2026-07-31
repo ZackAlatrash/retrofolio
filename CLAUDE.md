@@ -65,6 +65,16 @@ Never add a claim, metric, or link to a screen that isn't in `profile.ts`/`proje
 
 `showcaseData.ts` throws at import time if a cartridge references an unknown project id.
 
+The same one-directional rule covers what crawlers get. `scripts/seoHtml.ts`
+derives the social cards, the `Person` JSON-LD and a plain-HTML summary from
+`profile.ts` and `projects.ts`, and a `transformIndexHtml` plugin in
+`vite.config.ts` injects them **at build only**. The app renders on the client,
+so the served HTML is a bare `#root`: Google eventually runs the JS, but
+LinkedIn's preview bot, Bing and the answer engines mostly do not. React
+discards the summary the moment it mounts. Never hand-edit those tags into
+`index.html`, or they become a second copy of the facts that quietly goes
+stale.
+
 ### Motion
 
 - `src/motion/gsap.ts` registers ScrollTrigger exactly once and returns `null` outside a real browser (it explicitly detects jsdom). Callers must handle `null`; this is what keeps GSAP code testable under Vitest.

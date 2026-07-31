@@ -50,6 +50,14 @@ export function DecodeText({
 
   return (
     <span className={className} style={style} aria-label={text} role="text">
+      {/*
+        The real text, for anything that reads the DOM rather than looks at it.
+        Until the scrub reaches `start` every letter is a random glyph, so a
+        crawler rendering the page at scroll 0 found the h1 of this site to be
+        "<]*& }=$!>(/;" rather than a name. Screen readers are unaffected: the
+        wrapper's aria-label already governs what they announce.
+      */}
+      <span className="sr-only">{text}</span>
       {chars.map((ch, i) => {
         if (ch === " ") return <span key={i}>{" "}</span>;
         const lockAt = start + (end - start) * (i / chars.length);

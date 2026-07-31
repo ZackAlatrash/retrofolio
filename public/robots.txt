@@ -1,0 +1,18 @@
+# One page, all of it public. Nothing here is worth hiding from a crawler.
+User-agent: *
+Allow: /
+
+# Answer engines are how a name gets looked up now, so they are welcome too.
+User-agent: GPTBot
+Allow: /
+
+User-agent: ClaudeBot
+Allow: /
+
+User-agent: PerplexityBot
+Allow: /
+
+User-agent: Google-Extended
+Allow: /
+
+Sitemap: https://zackalatrash.com/sitemap.xml
