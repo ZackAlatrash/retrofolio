@@ -1,9 +1,10 @@
 name: Deploy to GitHub Pages
 
 on:
-  push:
-    branches: [main]
-  # So a failed deploy can be retried without an empty commit.
+  # Cloudflare Pages builds and serves zackalatrash.com from this repo; this
+  # workflow is the standby, run by hand if that ever needs bypassing. It is
+  # deliberately not on `push`, or two hosts would deploy the same commit and
+  # fight over the domain.
   workflow_dispatch:
 
 # GitHub Pages needs to write the deployment; nothing else does.
@@ -37,10 +38,10 @@ jobs:
         run: npm test
 
       - name: Build
-        # Served from the root of zackalatrash.com (public/CNAME), not from
-        # /<repo>/, so assets are built against the domain root. Change this back
-        # to "/${GITHUB_REPOSITORY#*/}/" if the custom domain ever goes away.
-        run: VITE_BASE="/" npm run build
+        # The standby serves the project site at github.io/<repo>/, so assets
+        # are built against that prefix. Cloudflare needs no equivalent: vite's
+        # base already defaults to "/".
+        run: VITE_BASE="/${GITHUB_REPOSITORY#*/}/" npm run build
 
       # Pages would otherwise hand the artifact to Jekyll, which skips paths
       # beginning with an underscore.

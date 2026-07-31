@@ -84,17 +84,18 @@ The site deploys to two places with different roots, so **every asset URL must b
 
 ## Deployment
 
-**GitHub Pages** (`.github/workflows/pages.yml`) — runs typecheck + unit tests before building, touches `.nojekyll`, deploys. Retry a failed deploy with `workflow_dispatch`.
+**Cloudflare Pages** serves **zackalatrash.com**, built from this repo on every
+push to `main`. Build command is `npm run typecheck && npm test && npm run
+build` so the same gates CI runs stand in front of the live site: Cloudflare
+runs only what the build command says, and would otherwise publish a build whose
+tests fail. Output directory `dist`, and `NODE_VERSION=22` to match the
+workflows. No `VITE_BASE` is needed: vite's base already defaults to `/`, which
+is what a domain root wants.
 
-Served from **zackalatrash.com**, so the workflow builds with `VITE_BASE="/"`
-and `public/CNAME` carries the domain (Vite copies `public/` into `dist/`, and
-Pages reads that file to claim the custom domain). If the domain ever goes away,
-set `VITE_BASE` back to `"/${GITHUB_REPOSITORY#*/}/"` and delete the CNAME, or
-every asset URL will 404 against a project-site path. DNS is on Cloudflare with
-the Pages records set to DNS-only, not proxied.
-
-The site is fully static: there is no server and no API. The help chatbot, its
-`/api/ask` endpoint and the retrieval/gate code were removed, so nothing here
-needs a key or a serverless runtime.
+**GitHub Pages** (`.github/workflows/pages.yml`) is the standby, `workflow_dispatch`
+only. It builds with `VITE_BASE=/<repo>/` for the project-site path and deploys
+to `github.io/<repo>/`. It is deliberately off `push`, or two hosts would deploy
+the same commit and fight over the domain. There is no `public/CNAME`: that file
+would make GitHub claim the domain out from under Cloudflare.
 
 `.github/workflows/ci.yml` runs typecheck, unit tests, and build on every push and PR. The Playwright suite is **not** in CI.
